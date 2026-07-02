@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e5226">
+  <meta name="description" content="NaijaPlate — smart Nigerian-British family meal planner with supermarket basket comparison.">
+  <title>NaijaPlate · Family Meal Planner</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍚</text></svg>">
+  <link rel="stylesheet" href="styles.css?v=7">
+</head>
+<body>
+  <header>
+    <h1>🍚 Naija<span class="accent">Plate</span></h1>
+    <p>Nigerian–British family meals, planned smart · shopped cheap</p>
+  </header>
+
+  <main class="wrap">
+    <!-- PLANNER -->
+    <section class="screen active" id="screen-plan">
+      <div class="week-nav" id="week-nav"></div>
+      <div class="week-toolbar">
+        <button class="btn btn-primary" data-act="generateWeek">✨ Plan this week</button>
+        <button class="btn btn-ghost" data-act="openInspire">🎲 Inspire me</button>
+        <button class="btn btn-ghost" data-act="switchTab|shop">🛒 Shopping list</button>
+      </div>
+      <div id="cook-plan"></div>
+      <div class="view-toggle">
+        <button class="active" data-view="family" data-act="setPlanView|family">👨‍👩‍👧‍👦 Family</button>
+        <button data-view="adults" data-act="setPlanView|adults">🧑 Adults</button>
+        <button data-view="kids" data-act="setPlanView|kids">🧒 Kids</button>
+      </div>
+      <div id="planner-days"></div>
+    </section>
+
+    <!-- RECIPES -->
+    <section class="screen" id="screen-recipes">
+      <input class="inp" id="recipe-search" placeholder="🔍 Search recipes…" data-inp="renderRecipes"
+             style="width:100%;font:inherit;font-size:.9rem;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:10px;background:#fff">
+      <div class="filters">
+        <button class="active" data-filter="all" data-act="setFilter|all">All</button>
+        <button data-filter="ng" data-act="setFilter|ng">🇳🇬 Nigerian</button>
+        <button data-filter="uk" data-act="setFilter|uk">🇬🇧 British</button>
+        <button data-filter="fusion" data-act="setFilter|fusion">✨ Fusion</button>
+        <button data-filter="kids" data-act="setFilter|kids">🧒 Kid-approved</button>
+        <button data-filter="healthy" data-act="setFilter|healthy">🥗 Healthy</button>
+        <button data-filter="quick" data-act="setFilter|quick">⚡ Quick</button>
+        <button data-filter="batch" data-act="setFilter|batch">♻ Batch-friendly</button>
+        <button data-filter="sides" data-act="setFilter|sides">🍽 Sides &amp; swallows</button>
+      </div>
+      <div class="recipe-grid" id="recipe-grid"></div>
+    </section>
+
+    <!-- SHOPPING -->
+    <section class="screen" id="screen-shop">
+      <div id="shop-content"></div>
+    </section>
+
+    <!-- YOU -->
+    <section class="screen" id="screen-you">
+      <div id="taste-content"></div>
+      <div id="settings-content"></div>
+      <p class="muted" style="text-align:center;margin:16px 0 4px">NaijaPlate · everything stays on your device 🔒</p>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button class="active" data-tab="plan" data-act="switchTab|plan"><span class="ico">📅</span>Plan</button>
+    <button data-tab="recipes" data-act="switchTab|recipes"><span class="ico">🍲</span>Recipes</button>
+    <button data-tab="shop" data-act="switchTab|shop"><span class="ico">🛒</span>Shop</button>
+    <button data-tab="you" data-act="switchTab|you"><span class="ico">💚</span>You</button>
+  </nav>
+
+  <div class="onboard" id="myfoods" style="z-index:85"></div>
+  <div class="modal-backdrop" id="modal"><div class="modal" id="modal-content"></div></div>
+  <div class="onboard" id="onboard"></div>
+  <div class="toast" id="toast"></div>
+
+  <script src="data.js?v=7"></script>
+  <script src="app.js?v=7"></script>
+</body>
+</html>
