@@ -1,0 +1,14 @@
+{
+  "name": "NaijaPlate — Family Meal Planner",
+  "short_name": "NaijaPlate",
+  "description": "Nigerian-British family meal planning, batch cooking and supermarket basket comparison.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#faf5ec",
+  "theme_color": "#0e5226",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

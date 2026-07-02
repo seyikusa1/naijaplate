@@ -6,8 +6,10 @@
   <meta name="theme-color" content="#0e5226">
   <meta name="description" content="NaijaPlate — smart Nigerian-British family meal planner with supermarket basket comparison.">
   <title>NaijaPlate · Family Meal Planner</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍚</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
   <header>
@@ -76,7 +78,12 @@
   <div class="onboard" id="onboard"></div>
   <div class="toast" id="toast"></div>
 
-  <script src="data.js?v=7"></script>
-  <script src="app.js?v=7"></script>
+  <script src="data.js?v=8"></script>
+  <script src="app.js?v=8"></script>
+  <script>
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
 </body>
 </html>
