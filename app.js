@@ -78,6 +78,7 @@ const saveAll = () => {
   store.save('prices', priceOverrides); store.save('settings', settings);
   store.save('extras', extras); store.save('customs', customs); store.save('combos', userCombos);
   store.save('myfoods', myFoods); store.save('customparts', customParts); store.save('customing', customIngredients);
+  window.onStateSaved?.();   // household sync hook (sync.js)
 };
 
 /* ---------- migration from the pre-component model ---------- */
