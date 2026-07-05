@@ -55,6 +55,7 @@ const PRICEBOOK = {
   mince:       { name: 'Beef mince',            cat: 'Meat & fish',    pack: '500g',   aldi: 2.50, tesco: 2.80, sains: 3.00, asda: 2.70 },
   stew_beef:   { name: 'Diced stewing beef',    cat: 'Meat & fish',    pack: '500g',   aldi: 3.40, tesco: 3.80, sains: 4.00, asda: 3.60 },
   sausages:    { name: 'Pork sausages',         cat: 'Meat & fish',    pack: '8pk',    aldi: 1.80, tesco: 2.20, sains: 2.40, asda: 2.00 },
+  turkey:      { name: 'Turkey wings/drumsticks', cat: 'Meat & fish',  pack: '1kg',    aldi: null, tesco: 3.50, sains: 3.60, asda: 3.20 },
   fish_fngr:   { name: 'Fish fingers',          cat: 'Frozen',         pack: '10pk',   aldi: 1.40, tesco: 1.75, sains: 1.90, asda: 1.60 },
   white_fish:  { name: 'White fish fillets',    cat: 'Frozen',         pack: '4pk',    aldi: 2.80, tesco: 3.20, sains: 3.50, asda: 3.00 },
 
@@ -116,12 +117,12 @@ const PARTS = {
     ing: [['okra', 1], ['palm_oil', 0.2], ['stew_beef', 0.8], ['dried_fish', 0.5], ['crayfish', 0.2], ['scotch_b', 0.5], ['onions', 0.2], ['stock_cubes', 0.2]],
     steps: ['Grate or finely chop okra.', 'Boil seasoned beef; keep stock.', 'Warm palm oil, add stock, meat, fish, crayfish and pepper; simmer 10 min.', 'Add okra and cook 5–7 min so it keeps its draw.'] },
 
-  red_stew: { name: 'Red Stew & Fried Fish', emoji: '🐟', grad: ['#c23b22', '#701608'], cuisine: 'ng', type: 'main',
-    meals: ['l', 'd'], kid: 2, spice: 2, mins: 65, kcal: 420, protein: 34, health: 3, allergens: ['fish'],
-    desc: 'The Sunday staple — deep red pepper stew with crispy tilapia.',
+  red_stew: { name: 'Red Pepper Stew', emoji: '🍅', grad: ['#c23b22', '#701608'], cuisine: 'ng', type: 'main',
+    meals: ['l', 'd'], kid: 2, spice: 2, mins: 50, kcal: 260, protein: 6, health: 3, allergens: [],
+    desc: 'The Sunday staple — deep red pepper base. Pair it with any protein and side you fancy.',
     tip: 'Kids version: ladle theirs out before the scotch bonnet goes in.',
-    ing: [['tilapia', 1], ['plum_tom', 2], ['peppers', 0.7], ['scotch_b', 0.5], ['onions', 0.3], ['puree', 0.5], ['veg_oil', 0.3], ['stock_cubes', 0.2], ['thyme', 0.1]],
-    steps: ['Blend tomatoes, peppers, scotch bonnet and onion; boil down.', 'Fry seasoned tilapia until crisp; set aside.', 'Fry the blend in the same oil with purée until it darkens and oil rises.', 'Season, add fish for the last 5 min.'] },
+    ing: [['plum_tom', 2], ['peppers', 0.7], ['scotch_b', 0.5], ['onions', 0.3], ['puree', 0.5], ['veg_oil', 0.3], ['stock_cubes', 0.2], ['thyme', 0.1]],
+    steps: ['Blend tomatoes, peppers, scotch bonnet and onion; boil down.', 'Fry the blend in hot oil with purée until it darkens and oil rises to the top.', 'Season well; simmer with your chosen protein for the last 10 min.'] },
 
   pepper_soup: { name: 'Chicken Pepper Soup', emoji: '🍲', grad: ['#b3541e', '#6e2a08'], cuisine: 'ng', type: 'main',
     meals: ['d'], kid: 0, spice: 3, mins: 45, kcal: 320, protein: 35, health: 5, allergens: [],
@@ -154,18 +155,18 @@ const PARTS = {
     ing: [['stew_beef', 1, 'thin-sliced'], ['suya_spice', 0.7], ['veg_oil', 0.1], ['onions', 0.2], ['tomatoes', 0.5]],
     steps: ['Slice beef thin, thread onto soaked skewers.', 'Oil lightly, coat generously with suya spice; rest 30 min.', 'Grill hot 4–5 min a side.', 'Dust again with yaji; serve with sliced onion and tomato.'] },
 
-  jollof_rice: { name: 'Jollof Rice & Chicken', emoji: '🍚', grad: ['#e2542c', '#a31f0e'], cuisine: 'ng', type: 'main',
-    meals: ['l', 'd'], kid: 3, spice: 2, mins: 60, kcal: 620, protein: 34, health: 3, allergens: [],
-    desc: 'The party classic — smoky one-pot tomato rice with seasoned chicken.',
+  jollof_rice: { name: 'Jollof Rice', emoji: '🍚', grad: ['#e2542c', '#a31f0e'], cuisine: 'ng', type: 'main',
+    meals: ['l', 'd'], kid: 3, spice: 2, mins: 55, kcal: 420, protein: 9, health: 3, allergens: [],
+    desc: 'The party classic — smoky one-pot tomato rice. Combine with chicken, fish, turkey… whatever the day calls for.',
     tip: 'Kids version: hold the scotch bonnet back and blend it into the adults’ portion at the end.',
-    ing: [['rice', 0.5, '500g rice'], ['plum_tom', 2], ['puree', 0.5], ['peppers', 1], ['scotch_b', 0.5, 'to taste'], ['onions', 0.3], ['thighs', 1], ['stock_cubes', 0.2], ['thyme', 0.1], ['curry_pwd', 0.2], ['veg_oil', 0.1]],
-    steps: ['Blend tomatoes, red pepper, onion and scotch bonnet; boil the blend down until thick.', 'Brown seasoned chicken thighs, set aside; fry remaining onion, add purée and cook 5 min.', 'Add the pepper blend, stock and spices; simmer 10 min.', 'Stir in washed rice, top with chicken, cover with foil + lid and steam on low ~30 min.', 'Let the bottom catch slightly for the smoky party flavour.'] },
+    ing: [['rice', 0.5, '500g rice'], ['plum_tom', 2], ['puree', 0.5], ['peppers', 1], ['scotch_b', 0.5, 'to taste'], ['onions', 0.3], ['stock_cubes', 0.2], ['thyme', 0.1], ['curry_pwd', 0.2], ['veg_oil', 0.1]],
+    steps: ['Blend tomatoes, red pepper, onion and scotch bonnet; boil the blend down until thick.', 'Fry onion in oil, add purée and cook 5 min.', 'Add the pepper blend, stock and spices; simmer 10 min.', 'Stir in washed rice, cover with foil + lid and steam on low ~30 min.', 'Let the bottom catch slightly for the smoky party flavour.'] },
 
   fried_rice_ng: { name: 'Nigerian Fried Rice', emoji: '🍛', grad: ['#c9a227', '#7c5f0b'], cuisine: 'ng', type: 'main',
-    meals: ['l', 'd'], kid: 3, spice: 1, mins: 50, kcal: 580, protein: 28, health: 3, allergens: [],
-    desc: 'Golden curried rice with mixed veg and chicken — jollof’s milder party twin.',
-    ing: [['rice', 0.5], ['mixed_veg', 0.5], ['chick_brst', 1], ['curry_pwd', 0.3], ['stock_cubes', 0.2], ['onions', 0.2], ['veg_oil', 0.1]],
-    steps: ['Parboil rice with curry powder and stock until just underdone.', 'Dice and stir-fry chicken; set aside.', 'Stir-fry veg with onion, add rice in batches, tossing on high heat.', 'Fold in chicken; steam 5 min on low.'] },
+    meals: ['l', 'd'], kid: 3, spice: 1, mins: 45, kcal: 400, protein: 8, health: 3, allergens: [],
+    desc: 'Golden curried rice with mixed veg — jollof’s milder party twin. Add your protein of choice.',
+    ing: [['rice', 0.5], ['mixed_veg', 0.5], ['curry_pwd', 0.3], ['stock_cubes', 0.2], ['onions', 0.2], ['veg_oil', 0.1]],
+    steps: ['Parboil rice with curry powder and stock until just underdone.', 'Stir-fry veg with onion, add rice in batches, tossing on high heat.', 'Steam 5 min on low before serving.'] },
 
   egg_sauce: { name: 'Egg Sauce', emoji: '🍳', grad: ['#d9a441', '#8f5e0c'], cuisine: 'ng', type: 'main',
     meals: ['b'], kid: 2, spice: 1, mins: 15, kcal: 210, protein: 16, health: 4, allergens: ['egg'],
@@ -190,6 +191,37 @@ const PARTS = {
     desc: 'Bangers with proper slow-fried onion gravy.',
     ing: [['sausages', 1], ['onions', 0.3], ['gravy', 0.3], ['peas', 0.3]],
     steps: ['Oven-bake sausages 25 min.', 'Slow-fry sliced onions, add gravy.', 'Simmer peas.'] },
+
+  /* ---------- Proteins (combine with any main that takes one) ---------- */
+  grilled_chicken: { name: 'Grilled Chicken', emoji: '🍗', grad: ['#a06a2c', '#5c360c'], cuisine: 'ng', type: 'protein',
+    kid: 3, spice: 0, mins: 35, kcal: 290, protein: 28, health: 4, allergens: [],
+    desc: 'Well-seasoned thighs, grilled until the skin crisps.',
+    ing: [['thighs', 1]],
+    steps: ['Season thighs generously (salt, stock cube, thyme, a little curry powder).', 'Grill or roast at 200°C ~30 min until crisp and cooked through.'] },
+
+  fried_fish: { name: 'Fried Fish (Tilapia)', emoji: '🐟', grad: ['#2d6fa3', '#123c61'], cuisine: 'ng', type: 'protein',
+    kid: 2, spice: 0, mins: 25, kcal: 260, protein: 30, health: 4, allergens: ['fish'],
+    desc: 'Crispy fried tilapia — the classic partner to stew and rice.',
+    ing: [['tilapia', 1], ['veg_oil', 0.2]],
+    steps: ['Season fish inside and out; rest 10 min.', 'Fry in hot oil until deep golden and crisp on both sides.'] },
+
+  peppered_turkey: { name: 'Peppered Turkey', emoji: '🦃', grad: ['#8c2f1b', '#4a1006'], cuisine: 'ng', type: 'protein',
+    kid: 1, spice: 2, mins: 45, kcal: 320, protein: 34, health: 4, allergens: [],
+    desc: 'Soft-boiled turkey wings tossed in fiery pepper sauce.',
+    ing: [['turkey', 1], ['scotch_b', 0.3], ['onions', 0.2], ['stock_cubes', 0.1]],
+    steps: ['Boil seasoned turkey until tender.', 'Fry or grill until edges crisp.', 'Toss through a quick scotch-bonnet and onion sauce.'] },
+
+  fried_beef: { name: 'Fried Beef', emoji: '🥩', grad: ['#6b3226', '#38150d'], cuisine: 'ng', type: 'protein',
+    kid: 2, spice: 0, mins: 30, kcal: 300, protein: 32, health: 3, allergens: [],
+    desc: 'Stew-seasoned beef, boiled then fried the Naija way.',
+    ing: [['stew_beef', 1]],
+    steps: ['Boil seasoned beef until tender; keep the stock for your stew.', 'Fry until browned at the edges.'] },
+
+  boiled_eggs: { name: 'Boiled Eggs', emoji: '🥚', grad: ['#c9a227', '#7c5f0b'], cuisine: 'ng', type: 'protein',
+    kid: 3, spice: 0, mins: 12, kcal: 140, protein: 12, health: 4, allergens: ['egg'],
+    desc: 'The budget protein — great with stew, beans or jollof.',
+    ing: [['eggs', 0.5, '6 eggs']],
+    steps: ['Boil 8–10 min, cool in cold water, peel.'] },
 
   /* ---------- Sides & swallows ---------- */
   pounded_yam: { name: 'Pounded Yam', emoji: '🫓', grad: ['#e0c07a', '#9c7a2e'], cuisine: 'ng', type: 'side',
@@ -367,6 +399,16 @@ const PAIRS = {
   akara:         ['bread_side'],
   fish_fingers_m:['chips_side', 'mash', 'dodo'],
   sausages_m:    ['mash', 'chips_side'],
+};
+
+/* ---- proteins that make sense with each main (best first).
+   The planner picks by your preferences; swap freely on the meal card. ---- */
+const PROTEIN_PAIRS = {
+  jollof_rice:   ['grilled_chicken', 'fried_fish', 'peppered_turkey', 'fried_beef', 'boiled_eggs'],
+  fried_rice_ng: ['grilled_chicken', 'fried_fish', 'peppered_turkey', 'fried_beef'],
+  red_stew:      ['fried_fish', 'grilled_chicken', 'peppered_turkey', 'fried_beef', 'boiled_eggs'],
+  ewa_beans:     ['fried_fish', 'boiled_eggs', 'grilled_chicken'],
+  asaro:         ['grilled_chicken', 'fried_fish'],
 };
 
 /* ---- batch cooking: one big pot of the MAIN covers N meals, keeps D days ---- */

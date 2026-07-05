@@ -9,7 +9,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <header>
@@ -49,6 +49,7 @@
         <button data-filter="quick" data-act="setFilter|quick">⚡ Quick</button>
         <button data-filter="batch" data-act="setFilter|batch">♻ Batch-friendly</button>
         <button data-filter="sides" data-act="setFilter|sides">🍽 Sides &amp; swallows</button>
+        <button data-filter="protein" data-act="setFilter|protein">🍖 Proteins</button>
       </div>
       <div class="recipe-grid" id="recipe-grid"></div>
     </section>
@@ -82,10 +83,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="sync-config.js?v=9"></script>
-  <script src="data.js?v=9"></script>
-  <script src="app.js?v=9"></script>
-  <script src="sync.js?v=9"></script>
+  <script src="sync-config.js?v=10"></script>
+  <script src="data.js?v=10"></script>
+  <script src="app.js?v=10"></script>
+  <script src="sync.js?v=10"></script>
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('sw.js');

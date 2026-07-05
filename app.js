@@ -41,6 +41,7 @@ const store = {
 let prefs = { like: {}, dislike: {}, rating: {}, cooked: {}, kidFav: {}, adultFav: {}, accept: {}, reject: {}, ...store.load('prefs', {}) };
 prefs.accept = prefs.accept || {}; prefs.reject = prefs.reject || {};
 let myFoods = store.load('myfoods', {});      // curated pool: {partId: true}
+let foodTags = store.load('tags', {});        // your overrides: {partId: {meals:['b','l'], who:'all'|'adults'|'kids'}}
 
 /* ---------- user-grown database ----------
    customParts: foods researched online or taught by the user.
@@ -78,6 +79,7 @@ const saveAll = () => {
   store.save('prices', priceOverrides); store.save('settings', settings);
   store.save('extras', extras); store.save('customs', customs); store.save('combos', userCombos);
   store.save('myfoods', myFoods); store.save('customparts', customParts); store.save('customing', customIngredients);
+  store.save('tags', foodTags);
   window.onStateSaved?.();   // household sync hook (sync.js)
 };
 
@@ -91,31 +93,52 @@ for (const map of [prefs.like, prefs.dislike, prefs.rating, prefs.kidFav, prefs.
   for (const old in PREF_MIGRATE) if (map[old] !== undefined) { map[PREF_MIGRATE[old]] = map[old]; delete map[old]; }
 }
 
-/* ---------- combo resolver ---------- */
+/* ---------- your tags: when & who a food is for ---------- */
+function effMealsOf(id) {
+  const t = foodTags[id];
+  if (t && Array.isArray(t.meals)) return t.meals;          // your override (may be empty = never auto-plan)
+  return PARTS[id]?.meals || ['l', 'd'];
+}
+function whoOf(id) { return foodTags[id]?.who || null; }
+
+/* ---------- combo resolver ----------
+   A meal id is 'main' or 'main+part+part' where extra parts are a side
+   and/or a protein (classified by type, any order). */
 const comboCache = {};
 function mealOf(cid) {
   if (comboCache[cid]) return comboCache[cid];
-  const [mId, sId] = String(cid).split('+');
-  const M = PARTS[mId];
-  if (!M || (sId && !PARTS[sId])) return null;
-  const S = sId ? PARTS[sId] : null;
+  const ids = String(cid).split('+');
+  const M = PARTS[ids[0]];
+  if (!M) return null;
+  let S = null, sId = null, P = null, pId = null;
+  for (const x of ids.slice(1)) {
+    const part = PARTS[x];
+    if (!part) return null;
+    if (part.type === 'protein') { P = part; pId = x; }
+    else { S = part; sId = x; }
+  }
+  const extras = [P, S].filter(Boolean);
   const meal = {
-    id: cid, mainId: mId, sideId: sId || null, main: M, side: S,
-    name: S ? `${M.name} + ${S.name}` : M.name,
+    id: cid, mainId: ids[0], sideId: sId, proteinId: pId, main: M, side: S, prot: P,
+    name: [M.name, P && P.name, S && S.name].filter(Boolean).join(' + '),
     emoji: M.emoji, grad: M.grad, cuisine: M.cuisine,
-    meals: M.meals || ['l', 'd'],
-    kid: S ? Math.min(M.kid, S.kid) : M.kid,
-    spice: Math.max(M.spice, S ? S.spice : 0),
-    mins: S ? Math.max(M.mins, S.mins) + 5 : M.mins,
-    kcal: M.kcal + (S ? S.kcal : 0),
-    protein: M.protein + (S ? S.protein : 0),
-    health: S ? Math.round((M.health + S.health) / 2) : M.health,
-    allergens: [...new Set([...M.allergens, ...(S ? S.allergens : [])])],
+    meals: effMealsOf(ids[0]),
+    kid: Math.min(M.kid, ...extras.map(e => e.kid)),
+    spice: Math.max(M.spice, ...extras.map(e => e.spice)),
+    mins: extras.length ? Math.max(M.mins, ...extras.map(e => e.mins)) + 5 : M.mins,
+    kcal: M.kcal + extras.reduce((a, e) => a + e.kcal, 0),
+    protein: M.protein + extras.reduce((a, e) => a + e.protein, 0),
+    health: extras.length ? Math.round([M, ...extras].reduce((a, x) => a + x.health, 0) / (1 + extras.length)) : M.health,
+    allergens: [...new Set([M, ...extras].flatMap(x => x.allergens))],
     desc: M.desc, tip: M.tip, img: M.img || null,
-    ing: S ? [...M.ing, ...S.ing] : M.ing,
+    ing: [M, ...extras].flatMap(x => x.ing),
   };
   comboCache[cid] = meal;
   return meal;
+}
+
+function makeCid(mainId, proteinId, sideId) {
+  return [mainId, proteinId, sideId].filter(Boolean).join('+');
 }
 
 /* drop stored plans referencing ids that no longer resolve */
@@ -172,6 +195,10 @@ function scorePart(p, id, { forKids = false, recentIds = [], preferBatch = false
   if (preferBatch && BATCH[id]) s += 4;
   if (quick) s -= p.mins * 0.06;
   if (myFoods[id]) s += 6;                                        // on your curated list
+  const who = whoOf(id);                                          // your audience tag beats inference
+  if (who === 'kids') s += forKids ? 8 : -12;
+  else if (who === 'adults') s += forKids ? -18 : 6;
+  else if (who === 'all') s += 3;
   s += Math.min(6, (prefs.accept[id] || 0) * 1.5);                // meals you kept in the plan
   s -= Math.min(8, (prefs.reject[id] || 0) * 1.5);                // meals you swapped away / removed
   const rep = recentIds.filter(x => x === id).length;
@@ -190,6 +217,11 @@ function comboScore(cid, opts = {}) {
     if (ss < -100) return -999;              // disliked side kills the combo
     s += ss * 0.45 + (userCombos.includes(cid) ? 5 : 3);
   }
+  if (m.prot) {
+    const ps = scorePart(m.prot, m.proteinId, opts);
+    if (ps < -100) return -999;              // disliked protein kills the combo
+    s += ps * 0.35;
+  }
   const sameCuisineRun = (opts.recentIds || []).slice(-2).filter(x => PARTS[x]?.cuisine === m.cuisine).length;
   s -= sameCuisineRun * 2;
   s += Math.random() * 4;
@@ -200,7 +232,7 @@ function candidateMeals(mealType, { ignorePool = false } = {}) {
   const strict = settings.poolMode === 'strict' && Object.keys(myFoods).some(k => myFoods[k]) && !ignorePool;
   const out = [];
   for (const [id, p] of Object.entries(PARTS)) {
-    const inMeal = (p.meals || []).includes(mealType);
+    const inMeal = effMealsOf(id).includes(mealType);            // your meal-time tags rule here
     if (strict && !myFoods[id] && p.type !== 'side') continue;   // strict mode: mains/dishes from your list only
     if (p.type === 'dish' || (p.type === 'side' && p.solo)) { if (inMeal) out.push(id); }
     else if (p.type === 'main' && inMeal) {
@@ -218,21 +250,31 @@ function candidateMeals(mealType, { ignorePool = false } = {}) {
   return out;
 }
 
+/* attach the best-scoring protein to a main that takes one (variety-aware) */
+function withProtein(cid, opts = {}) {
+  const m = mealOf(cid);
+  if (!m || m.proteinId) return cid;
+  const prots = PROTEIN_PAIRS[m.mainId] || [];
+  if (!prots.length) return cid;
+  const ranked = prots.map(p => [scorePart(PARTS[p], p, opts), p]).sort((a, b) => b[0] - a[0]);
+  if (!ranked.length || ranked[0][0] < -100) return cid;
+  return makeCid(m.mainId, ranked[0][1], m.sideId);
+}
+
 function pickMeal(mealType, opts = {}) {
   const ranked = candidateMeals(mealType).map(c => [comboScore(c, opts), c]).sort((a, b) => b[0] - a[0]);
-  return ranked.length && ranked[0][0] > -100 ? ranked[0][1] : null;
+  return ranked.length && ranked[0][0] > -100 ? withProtein(ranked[0][1], opts) : null;
 }
 
 function kidOkMeal(cid) {
   const m = mealOf(cid);
-  return m && (m.kid >= 2 || prefs.kidFav[m.mainId]) && m.spice <= settings.kidSpice;
+  return m && (m.kid >= 2 || prefs.kidFav[m.mainId] || whoOf(m.mainId) === 'kids') && m.spice <= settings.kidSpice;
 }
 
 function defaultCombo(mainId) {
-  const sides = PAIRS[mainId];
-  if (!sides || !sides.length) return mainId;
-  const best = sides.map(s => [scorePart(PARTS[s], s), s]).sort((a, b) => b[0] - a[0])[0][1];
-  return mainId + '+' + best;
+  const sides = PAIRS[mainId] || [];
+  const bestSide = sides.length ? sides.map(s => [scorePart(PARTS[s], s), s]).sort((a, b) => b[0] - a[0])[0][1] : null;
+  return withProtein(makeCid(mainId, null, bestSide));
 }
 
 /* ---------- weekly plan generation ---------- */
@@ -240,7 +282,11 @@ function covAllows(v, isWknd) { return v === 'all' || (v === 'weekday' && !isWkn
 
 function freshFor(mealType, recent, opts, forKids) {
   const cid = pickMeal(mealType, { ...opts, forKids, recentIds: recent });
-  if (cid) recent.push(mealOf(cid).mainId);
+  if (cid) {
+    const m = mealOf(cid);
+    recent.push(m.mainId);
+    if (m.proteinId) recent.push(m.proteinId);   // vary the protein across the week too
+  }
   return cid;
 }
 
@@ -459,6 +505,7 @@ function renderRecipes() {
     if (activeFilter === 'quick' && p.mins > 35) return false;
     if (activeFilter === 'batch' && !BATCH[id]) return false;
     if (activeFilter === 'sides' && p.type !== 'side') return false;
+    if (activeFilter === 'protein' && p.type !== 'protein') return false;
     if (q && !p.name.toLowerCase().includes(q)) return false;
     return true;
   }).sort((a, b) => scorePart(b[1], b[0]) - scorePart(a[1], a[0]));
@@ -493,13 +540,24 @@ function dots(n, max, cls) {
 function openRecipe(cid, slotKey, who) {
   const m = mealOf(cid);
   if (!m) return;
-  modalCtx = { cid, slotKey: slotKey || null, who: who || null, moreSides: modalCtx?.cid === cid ? modalCtx.moreSides : false };
+  modalCtx = {
+    cid, slotKey: slotKey || null, who: who || null,
+    moreSides: modalCtx?.cid === cid ? modalCtx.moreSides : false,
+    moreProts: modalCtx?.cid === cid ? modalCtx.moreProts : false,
+  };
   const id = m.mainId;
   const rating = prefs.rating[id] || 0;
   const b = BATCH[id];
   const isPairable = m.main.type === 'main' && PAIRS[id];
   const allSides = Object.entries(PARTS).filter(([, p]) => p.type === 'side').map(([sid]) => sid);
   const sideChoices = modalCtx.moreSides ? allSides : (PAIRS[id] || []);
+  const allProts = Object.entries(PARTS).filter(([, p]) => p.type === 'protein').map(([pid]) => pid);
+  const protRecommended = PROTEIN_PAIRS[id] || [];
+  const protChoices = modalCtx.moreProts ? allProts : protRecommended;
+  const takesProtein = m.main.type === 'main' && (protRecommended.length || m.proteinId);
+  const plannable = m.main.type !== 'protein' && (m.main.type !== 'side' || m.main.solo);
+  const eff = effMealsOf(id);
+  const whoTag = whoOf(id);
   $('#modal-content').innerHTML = `
     <div class="m-hero" style="${m.img ? `background:url('${m.img}') center/cover` : thumbStyle(m)}">${emo(m)}
       <button class="m-close" data-act="closeModal">✕</button></div>
@@ -508,6 +566,14 @@ function openRecipe(cid, slotKey, who) {
       ${b ? `<span class="pill pill-fusion">♻ 1 pot ≈ ${b.covers} meals · keeps ${b.keeps} days</span>` : ''}
       <h3>${m.name}</h3>
       <div class="m-desc">${m.desc}</div>
+      ${takesProtein ? `
+        <div class="serve-with"><span class="sw-label">🍖 Protein — your choice</span>
+          <div class="chiplist">
+            ${protChoices.map(p => `<span class="chip ${m.proteinId === p ? 'love' : ''}" data-act="swapProt|${id}|${p}">${PARTS[p].emoji} ${PARTS[p].name}</span>`).join('')}
+            <span class="chip ${!m.proteinId ? 'love' : ''}" data-act="swapProt|${id}|_none">none</span>
+            ${modalCtx.moreProts ? '' : `<span class="chip" data-act="moreProts">＋ more…</span>`}
+          </div>
+        </div>` : ''}
       ${isPairable ? `
         <div class="serve-with"><span class="sw-label">Serve with</span>
           <div class="chiplist">
@@ -516,6 +582,17 @@ function openRecipe(cid, slotKey, who) {
             ${modalCtx.moreSides ? '' : `<span class="chip" data-act="moreSides">＋ more…</span>`}
           </div>
           ${m.sideId && !(PAIRS[id] || []).includes(m.sideId) ? '<div class="muted" style="margin-top:4px">✨ your own combo — saved for future plans</div>' : ''}
+        </div>` : ''}
+      ${plannable ? `
+        <div class="serve-with"><span class="sw-label">🏷 Plan this for</span>
+          <div class="chiplist">
+            ${MEALS.map(mt => `<span class="chip ${eff.includes(mt) ? 'love' : ''}" data-act="tagMeal|${id}|${mt}">${MEAL_ICONS[mt]} ${MEAL_NAMES[mt]}</span>`).join('')}
+          </div>
+          <div class="chiplist" style="margin-top:6px">
+            ${[['all', '👨‍👩‍👧‍👦 Everyone'], ['adults', '🧑 Adults'], ['kids', '🧒 Kids']].map(([v, l]) =>
+              `<span class="chip ${whoTag === v ? 'love' : ''}" data-act="tagWho|${id}|${v}">${l}</span>`).join('')}
+          </div>
+          ${eff.length === 0 ? '<div class="muted" style="margin-top:4px">⚠ No meal times ticked — I\'ll never auto-plan this (you can still add it by hand).</div>' : ''}
         </div>` : ''}
       <div class="healthbar">
         <div class="hstat"><div class="v">${m.kcal}</div><div class="k">kcal</div></div>
@@ -531,8 +608,9 @@ function openRecipe(cid, slotKey, who) {
         const it = PRICEBOOK[k];
         return `<li><span>${it.name}</span><span class="qty">${note || fmtQty(q, it.pack)}</span></li>`;
       }).join('')}</ul>
-      <h2 class="section">Method${m.side ? ` — ${m.main.name}` : ''}</h2>
+      <h2 class="section">Method${(m.side || m.prot) ? ` — ${m.main.name}` : ''}</h2>
       <ol class="steps">${m.main.steps.map(s => `<li>${s}</li>`).join('')}</ol>
+      ${m.prot ? `<h2 class="section">— ${m.prot.name}</h2><ol class="steps">${m.prot.steps.map(s => `<li>${s}</li>`).join('')}</ol>` : ''}
       ${m.side ? `<h2 class="section">— ${m.side.name}</h2><ol class="steps">${m.side.steps.map(s => `<li>${s}</li>`).join('')}</ol>` : ''}
       <div class="stars" id="stars">${[1, 2, 3, 4, 5].map(i => `<span class="${i <= rating ? 'on' : ''}" data-act="rate|${id}|${i}">⭐</span>`).join('')}</div>
       <div class="react-row">
@@ -549,20 +627,17 @@ function openRecipe(cid, slotKey, who) {
         <button class="btn btn-green" data-act="keepSlot|${slotKey}">👍 Keep it</button>
         <button class="btn btn-ghost" data-act="openPicker|${slotKey}|${who || 'f'}">↻ Change</button>
         <button class="btn btn-ghost" style="color:#a52222" data-act="removeSlot|${slotKey}">🗑 Remove</button>
-      </div>` : (m.main.type === 'side' && !m.main.solo) ? '' : `<button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="quickAdd|${cid}">＋ Add to this week</button>`}
+      </div>` : !plannable ? '' : `<button class="btn btn-primary" style="width:100%;margin-top:10px" data-act="quickAdd|${cid}">＋ Add to this week</button>`}
     </div>`;
   $('#modal').classList.add('open');
 }
 
 function moreSides() { if (modalCtx) { modalCtx.moreSides = true; const c = modalCtx; openRecipe(c.cid, c.slotKey, c.who); } }
+function moreProts() { if (modalCtx) { modalCtx.moreProts = true; const c = modalCtx; openRecipe(c.cid, c.slotKey, c.who); } }
 
-function swapSide(mainId, sideId) {
-  const cid = sideId === '_none' ? mainId : mainId + '+' + sideId;
+/* swap one component of the current combo, keep the rest, update the plan slot */
+function applyComboSwap(cid) {
   if (!mealOf(cid)) return;
-  if (sideId !== '_none' && !(PAIRS[mainId] || []).includes(sideId) && !userCombos.includes(cid)) {
-    userCombos.push(cid);
-    toast('✨ New combo saved — it joins your recommendations');
-  }
   const ctx = modalCtx || {};
   if (ctx.slotKey && ctx.who && plan) {
     const slot = plan[ctx.slotKey] || {};
@@ -573,6 +648,49 @@ function swapSide(mainId, sideId) {
   }
   modalCtx = { ...ctx, cid };
   openRecipe(cid, ctx.slotKey, ctx.who);
+}
+
+function swapSide(mainId, sideId) {
+  const cur = mealOf(modalCtx?.cid || mainId);
+  const cid = makeCid(mainId, cur?.proteinId, sideId === '_none' ? null : sideId);
+  if (sideId !== '_none' && !(PAIRS[mainId] || []).includes(sideId)) {
+    const pairCid = mainId + '+' + sideId;
+    if (!userCombos.includes(pairCid)) { userCombos.push(pairCid); saveAll(); toast('✨ New combo saved — it joins your recommendations'); }
+  }
+  applyComboSwap(cid);
+}
+
+function swapProt(mainId, protId) {
+  const cur = mealOf(modalCtx?.cid || mainId);
+  const cid = makeCid(mainId, protId === '_none' ? null : protId, cur?.sideId);
+  if (protId !== '_none' && !(PROTEIN_PAIRS[mainId] || []).includes(protId)) toast('✨ Unusual pairing — love it');
+  applyComboSwap(cid);
+}
+
+/* your tags: which meals + who a food is planned for */
+function clearComboCacheFor(id) {
+  for (const k in comboCache) if (k.split('+')[0] === id) delete comboCache[k];
+}
+function tagMeal(id, mt) {
+  const t = foodTags[id] = foodTags[id] || {};
+  const cur = t.meals ? [...t.meals] : [...effMealsOf(id)];
+  const i = cur.indexOf(mt);
+  if (i >= 0) cur.splice(i, 1); else cur.push(mt);
+  t.meals = MEALS.filter(x => cur.includes(x));   // keep canonical b,l,d order
+  clearComboCacheFor(id);
+  saveAll();
+  const c = modalCtx || {};
+  openRecipe(c.cid || id, c.slotKey, c.who);
+  renderRecipes();
+}
+function tagWho(id, v) {
+  const t = foodTags[id] = foodTags[id] || {};
+  if (t.who === v) delete t.who; else t.who = v;
+  if (!Object.keys(t).length) delete foodTags[id];
+  saveAll();
+  const c = modalCtx || {};
+  openRecipe(c.cid || id, c.slotKey, c.who);
+  renderRecipes(); renderYou();
 }
 
 function fmtQty(q, pack) {
@@ -596,6 +714,7 @@ function quickAdd(cid) {
   const m = mealOf(cid);
   if (!m) return;
   if (m.main.type === 'main' && !m.sideId && PAIRS[m.mainId]?.length) cid = defaultCombo(m.mainId);
+  else if (m.main.type === 'main') cid = withProtein(cid);
   const mealType = m.meals.includes('d') ? 'd' : m.meals[0];
   plan = ensureWeek(weekOffset);
   const free = DAYS.find(d => !plan[`${d}-${mealType}`]) || 'mon';
@@ -1664,7 +1783,7 @@ function toast(msg) {
 const ACTIONS = {
   switchTab, setPlanView, generateWeek, weekNav, openRecipe, openPicker, assignSlot, clearSlot,
   closeModal, rate, toggleLike, toggleDislike, toggleKidFav, toggleAdultFav, quickAdd,
-  swapSide, moreSides, surpriseSlot, openInspire, keepSlot, removeSlot,
+  swapSide, moreSides, swapProt, moreProts, tagMeal, tagWho, surpriseSlot, openInspire, keepSlot, removeSlot,
   toggleMyFood, openMyFoods, closeMyFoods, searchMyFoods, setPoolMode,
   importMeal, openManualFood, saveManualFood, removeCustomPart, openPacks, exportPack, importPack,
   toggleCheck, togglePriceEdit, setPrice, setCustomPrice, copyList, openAddModal, addExtra,

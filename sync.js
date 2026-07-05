@@ -10,7 +10,7 @@
 /* global firebase, FIREBASE_CONFIG */
 
 const SYNC_KEYS = ['plans', 'prefs', 'checks', 'prices', 'settings', 'extras',
-  'customs', 'combos', 'myfoods', 'customparts', 'customing', 'onboarded'];
+  'customs', 'combos', 'myfoods', 'customparts', 'customing', 'tags', 'onboarded'];
 
 let sync = {
   user: null,

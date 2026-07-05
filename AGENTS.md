@@ -30,10 +30,18 @@ Run it: `python -m http.server 8734 -d .` then open http://localhost:8734.
    as last arg), `data-inp` (input). Every handler must be registered in the
    `ACTIONS` object near the bottom of `app.js`. Numeric-looking args are
    auto-cast to numbers.
-2. **The component food model.** A food is a *part*: `type: 'main'` (needs a
-   side, see `PAIRS`), `'side'` (`solo: true` = can stand alone), or `'dish'`
-   (complete plate). A planned meal is a combo id like `'egusi_soup+eba'`
-   resolved by `mealOf(cid)` — never index `PARTS` with a combo id directly.
+2. **The component food model.** A food is a *part*: `type: 'main'` (takes a
+   side via `PAIRS` and/or a protein via `PROTEIN_PAIRS`), `'protein'`
+   (grilled chicken, fried fish…), `'side'` (`solo: true` = can stand alone),
+   or `'dish'` (complete plate). A planned meal is a combo id like
+   `'jollof_rice+fried_fish+dodo'` (main first; extra parts classified by
+   type, any order) resolved by `mealOf(cid)` — never index `PARTS` with a
+   combo id directly; build ids with `makeCid(main, protein, side)`. Do NOT
+   bake proteins into a main's ingredients — keep them swappable parts.
+   User tag overrides live in `foodTags` (localStorage key `tags`, synced):
+   per-part meal times (`meals: ['b','l','d']`, empty = never auto-plan) and
+   audience (`who: 'all'|'adults'|'kids'`) — `effMealsOf()`/`whoOf()` must be
+   respected by any candidate generation or scoring you touch.
 3. **Plan slots** are `{f: cid}` (family), `{a: cid, k: cid}` (split),
    `{a: cid}` / `{k: cid}` (audience-only, from meal coverage), optionally
    `lo: 'sun-d'` (leftover of that slot's batch). Plans are keyed by ISO
