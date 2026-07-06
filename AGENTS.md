@@ -44,8 +44,11 @@ Run it: `python -m http.server 8734 -d .` then open http://localhost:8734.
    3 = neutral, affects both selection weight and within-week repetition
    tolerance) — `effMealsOf()`/`whoOf()`/`freqOf()` must be respected by any
    candidate generation or scoring you touch. Onboarding is list-first:
-   step 3 builds `myFoods` with inline `tagControlsHtml()` controls; the
-   same controls appear in My Food List for ongoing management.
+   step 3 builds `myFoods`. List rows (onboarding + My Food List) show a
+   READ-ONLY `tagSummaryHtml()` line; tapping a row opens the food's card
+   (`openRecipe`) — the single "focus mode" where recipe, macros, tag and
+   frequency editing live. `#modal` must stay above both overlays
+   (z-index 97 > `#onboard` 95 > `#myfoods` 85).
 3. **Plan slots** are `{f: cid}` (family), `{a: cid, k: cid}` (split),
    `{a: cid}` / `{k: cid}` (audience-only, from meal coverage), optionally
    `lo: 'sun-d'` (leftover of that slot's batch). Plans are keyed by ISO

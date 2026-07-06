@@ -720,19 +720,18 @@ function bumpFreq(id, d) {
   refreshTagSurfaces();
 }
 
-/* compact tag + frequency controls, shared by My Food List and onboarding */
-function tagControlsHtml(id) {
+/* compact READ-ONLY tag summary for list rows — tap the row to open the
+   food's card (the focus mode) where recipe, macros and all controls live */
+function tagSummaryHtml(id) {
   const p = PARTS[id];
   if (!p) return '';
   const eff = effMealsOf(id), w = whoOf(id), f = freqOf(id);
   const plannable = p.type !== 'protein' && (p.type !== 'side' || p.solo);
-  return `<div class="tagctl">
-    ${plannable ? MEALS.map(mt => `<button class="ob-chip ${eff.includes(mt) ? 'sel' : ''}" data-act="tagMeal|${id}|${mt}" title="${MEAL_NAMES[mt]}">${MEAL_ICONS[mt]}</button>`).join('') : ''}
-    ${plannable ? '<span class="tag-sep"></span>' : ''}
-    ${[['all', '👨‍👩‍👧‍👦'], ['adults', '🧑'], ['kids', '🧒']].map(([v, l]) => `<button class="ob-chip ${w === v ? 'sel' : ''}" data-act="tagWho|${id}|${v}" title="${v}">${l}</button>`).join('')}
-    <span class="tag-sep"></span>
-    <span class="freq-ctl" title="How often (1–5)"><button data-act="bumpFreq|${id}|-1">−</button><span class="fv">${'●'.repeat(f)}${'○'.repeat(5 - f)}</span><button data-act="bumpFreq|${id}|1">＋</button></span>
-  </div>`;
+  const mealsTxt = plannable
+    ? MEALS.map(mt => `<span style="opacity:${eff.includes(mt) ? 1 : .22}">${MEAL_ICONS[mt]}</span>`).join('') + ' · '
+    : '';
+  const whoTxt = w === 'adults' ? '🧑 adults' : w === 'kids' ? '🧒 kids' : '👨‍👩‍👧‍👦';
+  return `${mealsTxt}${whoTxt} · <span style="color:var(--green-dark);letter-spacing:1px">${'●'.repeat(f)}${'○'.repeat(5 - f)}</span>`;
 }
 
 function fmtQty(q, pack) {
@@ -1304,14 +1303,14 @@ function renderOnboarding() {
       .sort((a, b) => a[1].name.localeCompare(b[1].name)).slice(0, 12) : [];
     el.innerHTML = `<div class="ob-wrap" style="text-align:left">
       <h2 style="margin-top:8px">Build your food list</h2>
-      <p class="muted" style="margin:6px 0 14px;line-height:1.5">This list is what your weekly plans are built from. Add the foods your family actually eats, then tune each one: <b>which meals</b> it's for (☀️🥪🌙), <b>who</b> it's for, and <b>how often</b> you want it (●○ 1–5).</p>
+      <p class="muted" style="margin:6px 0 14px;line-height:1.5">This list is what your weekly plans are built from. Add the foods your family actually eats — then <b>tap any food to open its card</b>: recipe, macros, and its planning controls (<b>which meals</b> ☀️🥪🌙, <b>who</b> it's for, <b>how often</b> ●○ 1–5).</p>
 
       <input class="inp" id="ob-search" placeholder="🔍 Search foods to add — 'egusi', 'pasta', 'breakfast'…" value="${ob.q.replace(/"/g, '&quot;')}" data-inp="obSearch"
         style="width:100%;font:inherit;font-size:.9rem;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;margin:2px 0 10px;background:#fff">
       ${results.length ? `<div class="pick-list">${results.map(([id, p]) => `
         <div class="pick" style="cursor:default">
-          <div class="thumb" style="${thumbStyle(p)}">${emo(p)}</div>
-          <div class="pi"><div class="rname">${p.name}</div><div class="rsub">${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : p.type === 'protein' ? ' · protein' : ''}</div></div>
+          <div class="thumb" style="${thumbStyle(p)}" data-act="openRecipe|${p.type === 'main' ? defaultCombo(id) : id}">${emo(p)}</div>
+          <div class="pi" data-act="openRecipe|${p.type === 'main' ? defaultCombo(id) : id}" style="cursor:pointer"><div class="rname">${p.name}</div><div class="rsub">${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : p.type === 'protein' ? ' · protein' : ''}</div></div>
           <button class="btn btn-sm btn-ghost" data-act="toggleMyFood|${id}">＋ Add</button>
         </div>`).join('')}</div>` : ''}
       ${q && !results.length ? '<p class="muted" style="margin:0 0 10px">Nothing local matches — you can research foods online later in You ▸ My food list.</p>' : ''}
@@ -1323,11 +1322,12 @@ function renderOnboarding() {
       <h2 class="section">Your list <span class="muted">${mine.length} food${mine.length === 1 ? '' : 's'}</span></h2>
       ${mine.length ? mine.map(id => {
         const p = PARTS[id];
-        return `<div class="ob-food" style="flex-wrap:wrap">
-          <div class="thumb" style="${thumbStyle(p)}">${emo(p)}</div>
-          <div class="ob-fi"><div class="rname">${p.name}</div></div>
+        const cid = p.type === 'main' ? defaultCombo(id) : id;
+        return `<div class="ob-food">
+          <div class="thumb" style="${thumbStyle(p)}" data-act="openRecipe|${cid}">${emo(p)}</div>
+          <div class="ob-fi" data-act="openRecipe|${cid}" style="cursor:pointer"><div class="rname">${p.name}</div>
+            <div class="rsub" style="font-size:.72rem;color:var(--ink-soft)">${tagSummaryHtml(id)}</div></div>
           <button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="toggleMyFood|${id}">✕</button>
-          <div style="flex-basis:100%">${tagControlsHtml(id)}</div>
         </div>`;
       }).join('') : '<p class="muted">Nothing yet — tap foods above to add them.</p>'}
 
@@ -1681,18 +1681,19 @@ function renderMyFoods() {
         </select></div>
     </div>
     <input class="inp" id="mf-search" placeholder="🔍 Smart search — try 'kids breakfast', 'nigerian batch', 'soup'…" value="${q.replace(/"/g, '&quot;')}" data-inp="searchMyFoods"
-      style="width:100%;font:inherit;font-size:.9rem;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;margin:2px 0 12px;background:#fff">
+      style="width:100%;font:inherit;font-size:.9rem;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;margin:2px 0 6px;background:#fff">
+    <p class="muted" style="margin:0 2px 10px;font-size:.74rem">Tap any food to open it — recipe, macros, and its planning controls (☀️🥪🌙 meals · who · ●○ how often) all live on the card.</p>
     <div class="pick-list">
       ${results.map(([id, p]) => `
         <div class="pick" style="cursor:default">
           <div class="thumb" style="${thumbStyle(p)}" data-act="openRecipe|${p.type === 'main' ? defaultCombo(id) : id}">${emo(p)}</div>
           <div class="pi" data-act="openRecipe|${p.type === 'main' ? defaultCombo(id) : id}" style="cursor:pointer">
             <div class="rname">${p.name}</div>
-            <div class="rsub">${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : ''}${BATCH[id] ? ' · ♻' : ''}${p.kid >= 2 ? ' · 👧' : ''}${p.custom ? ' · 🌐 yours' : ''}</div>
+            <div class="rsub">${myFoods[id] ? tagSummaryHtml(id) : `${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : p.type === 'protein' ? ' · protein' : ''}${BATCH[id] ? ' · ♻' : ''}${p.kid >= 2 ? ' · 👧' : ''}${p.custom ? ' · 🌐 yours' : ''}`}</div>
           </div>
           <button class="btn btn-sm ${myFoods[id] ? 'btn-green' : 'btn-ghost'}" data-act="toggleMyFood|${id}">${myFoods[id] ? '✓ On list' : '＋ Add'}</button>
           ${p.custom ? `<button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="removeCustomPart|${id}">✕</button>` : ''}
-        </div>${myFoods[id] ? `<div class="tagctl-row">${tagControlsHtml(id)}</div>` : ''}`).join('') || (q ? '' : '<p class="muted">Start typing to search your foods and the online food database.</p>')}
+        </div>`).join('') || (q ? '' : '<p class="muted">Start typing to search your foods and the online food database.</p>')}
     </div>
     ${q.trim().length >= 3 ? `
       <h2 class="section">🌐 From the free food database</h2>
