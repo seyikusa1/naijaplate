@@ -1740,7 +1740,7 @@ function renderYou() {
       ${noped.length ? `<div class="muted" style="margin-top:8px">Off the menu</div><div class="chiplist">${named(noped).map(p => `<span class="chip nope">${p.name}</span>`).join('')}</div>` : ''}
       ${userCombos.length ? `<div class="muted" style="margin-top:8px">Your own combos</div><div class="chiplist">${userCombos.map(c => { const m = mealOf(c); return m ? `<span class="chip love">✨ ${m.name}</span>` : ''; }).join('')}</div>` : ''}
       <div class="week-toolbar" style="margin-top:12px">
-        <button class="btn btn-ghost btn-sm" data-act="startOnboarding">🔄 Retake the quiz</button>
+        <button class="btn btn-ghost btn-sm" data-act="startOnboarding">🔄 Redo setup &amp; food list</button>
         <button class="btn btn-ghost btn-sm" data-act="openInspire||">✨ Inspire me</button>
       </div>
     </div>
