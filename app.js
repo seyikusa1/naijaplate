@@ -1313,7 +1313,7 @@ function renderOnboarding() {
           <div class="pi" data-act="openRecipe|${p.type === 'main' ? defaultCombo(id) : id}" style="cursor:pointer"><div class="rname">${p.name}</div><div class="rsub">${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : p.type === 'protein' ? ' · protein' : ''}</div></div>
           <button class="btn btn-sm btn-ghost" data-act="toggleMyFood|${id}">＋ Add</button>
         </div>`).join('')}</div>` : ''}
-      ${q && !results.length ? '<p class="muted" style="margin:0 0 10px">Nothing local matches — you can research foods online later in You ▸ My food list.</p>' : ''}
+      ${onlineSectionHtml(ob.q)}
 
       ${!q ? `${ONBOARD_GROUPS.map(g => `
         <div class="shop-cat" style="margin-top:12px">${g.title}</div>
@@ -1355,6 +1355,12 @@ function setCoverage(mealType, aud, v) { settings.coverage[mealType][aud] = v; s
 
 function obSearch(v) {
   ob.q = v; ob.keepScroll = true;
+  // same comprehensive pipeline as My Food List: local + online food database
+  clearTimeout(mfTimer);
+  if (v.trim().length >= 3) {
+    if (mfOnline.q !== v.trim()) mfOnline = { q: v.trim(), state: 'loading', results: [] };
+    mfTimer = setTimeout(() => onlineSearch(v.trim()), 400);
+  } else mfOnline = { q: '', state: 'idle', results: [] };
   renderOnboarding();
   const i = $('#ob-search');
   if (i) { i.focus(); i.selectionStart = i.selectionEnd = i.value.length; }
@@ -1405,17 +1411,60 @@ function mfRefocus() {
   if (i) { i.focus(); i.selectionStart = i.selectionEnd = i.value.length; }
 }
 
-/* ---------- online research: TheMealDB (free community food database) ---------- */
+/* ---------- online research: TheMealDB (free community food database) ----------
+   Searched two ways in parallel so results feel comprehensive:
+   by dish NAME and by INGREDIENT ("plantain" also finds dishes that use it). */
+const MEALDB = 'https://www.themealdb.com/api/json/v1/1/';
 async function onlineSearch(q) {
   try {
-    const res = await fetch('https://www.themealdb.com/api/json/v1/1/search.php?s=' + encodeURIComponent(q));
-    const data = await res.json();
-    if (myFoodsQuery.trim() !== q) return; // user typed on — stale response
-    mfOnline = { q, state: 'done', results: (data.meals || []).slice(0, 8) };
+    const [byName, byIng] = await Promise.all([
+      fetch(MEALDB + 'search.php?s=' + encodeURIComponent(q)).then(r => r.json()).catch(() => ({ meals: null })),
+      fetch(MEALDB + 'filter.php?i=' + encodeURIComponent(q)).then(r => r.json()).catch(() => ({ meals: null })),
+    ]);
+    if (mfOnline.q !== q) return; // user typed on — stale response
+    const seen = new Set();
+    const merged = [];
+    for (const m of [...(byName.meals || []), ...(byIng.meals || [])]) {
+      if (m && m.idMeal && !seen.has(m.idMeal)) { seen.add(m.idMeal); merged.push(m); }
+    }
+    mfOnline = { q, state: 'done', results: merged.slice(0, 10) };
   } catch {
     mfOnline = { q, state: 'error', results: [] };
   }
+  refreshOnlineSurfaces();
+}
+
+/* re-render whichever surface is showing online results, keeping focus */
+function refreshOnlineSurfaces() {
   if ($('#myfoods').classList.contains('open')) { renderMyFoods(); mfRefocus(); }
+  if ($('#onboard').classList.contains('open') && ob.step === 2) {
+    ob.keepScroll = true;
+    renderOnboarding();
+    const i = $('#ob-search');
+    if (i && ob.q) { i.focus(); i.selectionStart = i.selectionEnd = i.value.length; }
+  }
+}
+
+/* shared "from the free food database" section (My Food List + onboarding) */
+function onlineSectionHtml(q) {
+  if (q.trim().length < 3) return '';
+  return `
+    <h2 class="section">🌐 From the free food database</h2>
+    ${mfOnline.state === 'loading' ? '<p class="muted">Searching TheMealDB (community food database)…</p>' : ''}
+    ${mfOnline.state === 'error' ? '<p class="muted">Couldn\'t reach the food database — check your connection, or teach it to me below.</p>' : ''}
+    ${mfOnline.state === 'done' && !mfOnline.results.length ? '<p class="muted">The food database doesn\'t know this one — teach it to me below and it becomes part of your database.</p>' : ''}
+    <div class="pick-list">
+      ${(mfOnline.results || []).map((meal, i) => {
+        const imported = !!PARTS['u_' + meal.idMeal];
+        return `<div class="pick" style="cursor:default">
+          <div class="thumb" style="background:url('${meal.strMealThumb}/preview') center/cover"></div>
+          <div class="pi"><div class="rname">${meal.strMeal}</div>
+            <div class="rsub">${meal.strArea || 'World'} · ${meal.strCategory || 'dish'} · full recipe + photo</div></div>
+          <button class="btn btn-sm ${imported ? 'btn-green' : 'btn-ghost'}" ${imported ? '' : `data-act="importMeal|${i}"`}>${imported ? '✓ On list' : '⬇ Add'}</button>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-ghost" style="width:100%;margin:6px 0 20px" data-act="openManualFood|${q.replace(/\|/g, ' ').replace(/"/g, '&quot;')}">✍️ Not there? Teach me "${q.replace(/</g, '&lt;')}" myself</button>`;
 }
 
 /* map a TheMealDB ingredient name onto the price book; order matters (specific first) */
@@ -1474,11 +1523,20 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g
 const CAT_EMOJI = { Beef: '🥩', Chicken: '🍗', Dessert: '🍰', Lamb: '🍖', Pasta: '🍝', Pork: '🥓', Seafood: '🦐', Side: '🥗', Starter: '🥣', Vegan: '🥬', Vegetarian: '🥗', Breakfast: '🍳', Goat: '🍖', Miscellaneous: '🍲' };
 const IMPORT_GRADS = [['#8a5a2b', '#4c2e0c'], ['#a34a1e', '#5e2408'], ['#2d6fa3', '#123c61'], ['#4d8a2f', '#20520f'], ['#ad2f1d', '#5f0f06']];
 
-function importMeal(idx) {
-  const meal = mfOnline.results[idx];
+async function importMeal(idx) {
+  let meal = mfOnline.results[idx];
   if (!meal) return;
   const id = 'u_' + meal.idMeal;
   if (PARTS[id]) { toast('Already in your database'); return; }
+  // ingredient-search results are skeletons (name + photo only) — fetch the full record
+  if (!meal.strInstructions) {
+    toast('Fetching the full recipe…');
+    try {
+      const data = await fetch(MEALDB + 'lookup.php?i=' + encodeURIComponent(meal.idMeal)).then(r => r.json());
+      if (data.meals && data.meals[0]) meal = data.meals[0];
+      else { toast('Couldn\'t fetch that recipe — try again'); return; }
+    } catch { toast('Couldn\'t fetch that recipe — check your connection'); return; }
+  }
   const ing = [];
   const allergens = new Set();
   let spicy = false;
@@ -1523,8 +1581,8 @@ function importMeal(idx) {
   PARTS[id] = part;
   myFoods[id] = true;
   saveAll();
-  renderMyFoods(); mfRefocus(); renderRecipes(); renderYou();
-  toast(`${meal.strMeal} imported — recipe, photo & ingredients added 🌐`);
+  refreshTagSurfaces();
+  toast(`${meal.strMeal} added to your list — recipe, photo & ingredients included 🌐`);
 }
 
 /* ---------- teach it manually (when the food database doesn't know it) ---------- */
@@ -1574,8 +1632,8 @@ function saveManualFood() {
   };
   customParts[id] = part; PARTS[id] = part; myFoods[id] = true;
   saveAll(); closeModal();
-  renderMyFoods(); renderRecipes(); renderYou();
-  toast(`${name} added — it can be planned right away ✍️`);
+  refreshTagSurfaces();
+  toast(`${name} added to your list — tap it to tune its tags ✍️`);
 }
 
 function removeCustomPart(id) {
@@ -1695,24 +1753,8 @@ function renderMyFoods() {
           ${p.custom ? `<button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="removeCustomPart|${id}">✕</button>` : ''}
         </div>`).join('') || (q ? '' : '<p class="muted">Start typing to search your foods and the online food database.</p>')}
     </div>
-    ${q.trim().length >= 3 ? `
-      <h2 class="section">🌐 From the free food database</h2>
-      ${mfOnline.state === 'loading' ? '<p class="muted">Searching TheMealDB (community food database)…</p>' : ''}
-      ${mfOnline.state === 'error' ? '<p class="muted">Couldn\'t reach the food database — check your connection, or teach it to me below.</p>' : ''}
-      ${mfOnline.state === 'done' && !mfOnline.results.length ? '<p class="muted">The food database doesn\'t know this one — teach it to me below and it becomes part of your database.</p>' : ''}
-      <div class="pick-list">
-        ${(mfOnline.results || []).map((meal, i) => {
-          const imported = !!PARTS['u_' + meal.idMeal];
-          return `<div class="pick" style="cursor:default">
-            <div class="thumb" style="background:url('${meal.strMealThumb}/preview') center/cover"></div>
-            <div class="pi"><div class="rname">${meal.strMeal}</div>
-              <div class="rsub">${meal.strArea || 'World'} · ${meal.strCategory || 'dish'} · full recipe + photo</div></div>
-            <button class="btn btn-sm ${imported ? 'btn-green' : 'btn-ghost'}" ${imported ? '' : `data-act="importMeal|${i}"`}>${imported ? '✓ Imported' : '⬇ Import'}</button>
-          </div>`;
-        }).join('')}
-      </div>
-      <button class="btn btn-ghost" style="width:100%;margin:6px 0 20px" data-act="openManualFood|${q.replace(/\|/g, ' ').replace(/"/g, '&quot;')}">✍️ Not there? Teach me "${q.replace(/</g, '&lt;')}" myself</button>
-    ` : `<button class="btn btn-ghost" style="width:100%;margin:10px 0 20px" data-act="openManualFood|">✍️ Teach me a food of my own</button>`}
+    ${q.trim().length >= 3 ? onlineSectionHtml(q)
+      : `<button class="btn btn-ghost" style="width:100%;margin:10px 0 20px" data-act="openManualFood|">✍️ Teach me a food of my own</button>`}
   </div>`;
 }
 
