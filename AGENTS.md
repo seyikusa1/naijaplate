@@ -39,9 +39,13 @@ Run it: `python -m http.server 8734 -d .` then open http://localhost:8734.
    combo id directly; build ids with `makeCid(main, protein, side)`. Do NOT
    bake proteins into a main's ingredients — keep them swappable parts.
    User tag overrides live in `foodTags` (localStorage key `tags`, synced):
-   per-part meal times (`meals: ['b','l','d']`, empty = never auto-plan) and
-   audience (`who: 'all'|'adults'|'kids'`) — `effMealsOf()`/`whoOf()` must be
-   respected by any candidate generation or scoring you touch.
+   per-part meal times (`meals: ['b','l','d']`, empty = never auto-plan),
+   audience (`who: 'all'|'adults'|'kids'`) and frequency (`freq: 1–5`,
+   3 = neutral, affects both selection weight and within-week repetition
+   tolerance) — `effMealsOf()`/`whoOf()`/`freqOf()` must be respected by any
+   candidate generation or scoring you touch. Onboarding is list-first:
+   step 3 builds `myFoods` with inline `tagControlsHtml()` controls; the
+   same controls appear in My Food List for ongoing management.
 3. **Plan slots** are `{f: cid}` (family), `{a: cid, k: cid}` (split),
    `{a: cid}` / `{k: cid}` (audience-only, from meal coverage), optionally
    `lo: 'sun-d'` (leftover of that slot's batch). Plans are keyed by ISO

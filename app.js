@@ -100,6 +100,7 @@ function effMealsOf(id) {
   return PARTS[id]?.meals || ['l', 'd'];
 }
 function whoOf(id) { return foodTags[id]?.who || null; }
+function freqOf(id) { return foodTags[id]?.freq ?? 3; }     // how often you want it: 1 rare … 5 often (3 default)
 
 /* ---------- combo resolver ----------
    A meal id is 'main' or 'main+part+part' where extra parts are a side
@@ -201,8 +202,10 @@ function scorePart(p, id, { forKids = false, recentIds = [], preferBatch = false
   else if (who === 'all') s += 3;
   s += Math.min(6, (prefs.accept[id] || 0) * 1.5);                // meals you kept in the plan
   s -= Math.min(8, (prefs.reject[id] || 0) * 1.5);                // meals you swapped away / removed
+  const f = freqOf(id);                                           // your 1–5 how-often dial (3 = neutral)
+  s += (f - 3) * 3.5;
   const rep = recentIds.filter(x => x === id).length;
-  s -= rep * 25;
+  s -= rep * (33 - f * 3);                                        // freq 5 repeats easily, freq 1 barely ever
   return s;
 }
 
@@ -592,6 +595,11 @@ function openRecipe(cid, slotKey, who) {
             ${[['all', '👨‍👩‍👧‍👦 Everyone'], ['adults', '🧑 Adults'], ['kids', '🧒 Kids']].map(([v, l]) =>
               `<span class="chip ${whoTag === v ? 'love' : ''}" data-act="tagWho|${id}|${v}">${l}</span>`).join('')}
           </div>
+          <div class="chiplist" style="margin-top:6px;align-items:center">
+            <span class="muted" style="font-size:.72rem">How often:</span>
+            <span class="freq-ctl"><button data-act="bumpFreq|${id}|-1">−</button><span class="fv">${'●'.repeat(freqOf(id))}${'○'.repeat(5 - freqOf(id))}</span><button data-act="bumpFreq|${id}|1">＋</button></span>
+            <span class="muted" style="font-size:.72rem">${['', 'rare treat', 'occasional', 'regular', 'often', 'as much as possible'][freqOf(id)]}</span>
+          </div>
           ${eff.length === 0 ? '<div class="muted" style="margin-top:4px">⚠ No meal times ticked — I\'ll never auto-plan this (you can still add it by hand).</div>' : ''}
         </div>` : ''}
       <div class="healthbar">
@@ -667,10 +675,25 @@ function swapProt(mainId, protId) {
   applyComboSwap(cid);
 }
 
-/* your tags: which meals + who a food is planned for */
+/* your tags: which meals + who + how often a food is planned for */
 function clearComboCacheFor(id) {
   for (const k in comboCache) if (k.split('+')[0] === id) delete comboCache[k];
 }
+
+/* re-render whichever surface(s) show tag controls, preserving scroll */
+function refreshTagSurfaces() {
+  const obEl = $('#onboard'), mfEl = $('#myfoods');
+  if (obEl.classList.contains('open')) {
+    const st = obEl.scrollTop; renderOnboarding(); obEl.scrollTop = st;
+    const i = $('#ob-search'); if (i && ob.q) { i.focus(); i.selectionStart = i.selectionEnd = i.value.length; }
+  }
+  if (mfEl.classList.contains('open')) {
+    const st = mfEl.scrollTop; renderMyFoods(); mfEl.scrollTop = st; mfRefocus();
+  }
+  if ($('#modal').classList.contains('open') && modalCtx) openRecipe(modalCtx.cid, modalCtx.slotKey, modalCtx.who);
+  renderRecipes(); renderYou();
+}
+
 function tagMeal(id, mt) {
   const t = foodTags[id] = foodTags[id] || {};
   const cur = t.meals ? [...t.meals] : [...effMealsOf(id)];
@@ -679,18 +702,37 @@ function tagMeal(id, mt) {
   t.meals = MEALS.filter(x => cur.includes(x));   // keep canonical b,l,d order
   clearComboCacheFor(id);
   saveAll();
-  const c = modalCtx || {};
-  openRecipe(c.cid || id, c.slotKey, c.who);
-  renderRecipes();
+  refreshTagSurfaces();
 }
 function tagWho(id, v) {
   const t = foodTags[id] = foodTags[id] || {};
   if (t.who === v) delete t.who; else t.who = v;
-  if (!Object.keys(t).length) delete foodTags[id];
+  if (!t.who && !t.meals && !t.freq) delete foodTags[id];
   saveAll();
-  const c = modalCtx || {};
-  openRecipe(c.cid || id, c.slotKey, c.who);
-  renderRecipes(); renderYou();
+  refreshTagSurfaces();
+}
+function bumpFreq(id, d) {
+  const t = foodTags[id] = foodTags[id] || {};
+  t.freq = Math.max(1, Math.min(5, (t.freq ?? 3) + d));
+  if (t.freq === 3) delete t.freq;
+  if (!t.who && !t.meals && !t.freq) delete foodTags[id];
+  saveAll();
+  refreshTagSurfaces();
+}
+
+/* compact tag + frequency controls, shared by My Food List and onboarding */
+function tagControlsHtml(id) {
+  const p = PARTS[id];
+  if (!p) return '';
+  const eff = effMealsOf(id), w = whoOf(id), f = freqOf(id);
+  const plannable = p.type !== 'protein' && (p.type !== 'side' || p.solo);
+  return `<div class="tagctl">
+    ${plannable ? MEALS.map(mt => `<button class="ob-chip ${eff.includes(mt) ? 'sel' : ''}" data-act="tagMeal|${id}|${mt}" title="${MEAL_NAMES[mt]}">${MEAL_ICONS[mt]}</button>`).join('') : ''}
+    ${plannable ? '<span class="tag-sep"></span>' : ''}
+    ${[['all', '👨‍👩‍👧‍👦'], ['adults', '🧑'], ['kids', '🧒']].map(([v, l]) => `<button class="ob-chip ${w === v ? 'sel' : ''}" data-act="tagWho|${id}|${v}" title="${v}">${l}</button>`).join('')}
+    <span class="tag-sep"></span>
+    <span class="freq-ctl" title="How often (1–5)"><button data-act="bumpFreq|${id}|-1">−</button><span class="fv">${'●'.repeat(f)}${'○'.repeat(5 - f)}</span><button data-act="bumpFreq|${id}|1">＋</button></span>
+  </div>`;
 }
 
 function fmtQty(q, pack) {
@@ -1191,17 +1233,12 @@ function fallbackCopy(txt, ok) {
 }
 
 /* ---------- onboarding ---------- */
-let ob = { step: 0, choices: {} };
+let ob = { step: 0, q: '' };
 const COV_OPTS = [['all', 'Every day'], ['weekday', 'Weekdays'], ['weekend', 'Weekends'], ['none', "Don't plan"]];
 
 function startOnboarding() {
-  ob = { step: 0, choices: {} };
-  for (const g of ONBOARD_GROUPS) for (const id of g.ids) {
-    if (prefs.dislike[id]) ob.choices[id] = 'no';
-    else if (prefs.like[id]) ob.choices[id] = 'all';
-    else if (prefs.kidFav[id]) ob.choices[id] = 'kids';
-    else if (prefs.adultFav[id]) ob.choices[id] = 'adults';
-  }
+  ob = { step: 0, q: '' };
+  if (!store.load('onboarded', false)) settings.poolMode = 'strict';   // list-first by default for new setups
   renderOnboarding();
   $('#onboard').classList.add('open');
 }
@@ -1256,33 +1293,59 @@ function renderOnboarding() {
       <p class="muted" style="margin:0 0 14px;font-size:.74rem">e.g. kids on school dinners → Kids' lunch = "Weekends". You can change this any time in You ▸ Household.</p>
       <div class="week-toolbar">
         <button class="btn btn-ghost" data-act="obStep|0">← Back</button>
-        <button class="btn btn-primary" data-act="obStep|2">Next — your tastes →</button>
+        <button class="btn btn-primary" data-act="obStep|2">Next — your food list →</button>
       </div>
     </div>`;
   } else {
-    el.innerHTML = `<div class="ob-wrap">
-      <h2 style="margin-top:8px">Who enjoys what?</h2>
-      <p class="muted" style="margin:6px 0 14px;line-height:1.5">Each item is asked <b>on its own</b> — soups, swallows and sides separately. The planner combines what you love into sensible plates (and you can invent your own combos later).</p>
-      ${ONBOARD_GROUPS.map(g => `
-        <h2 class="section" style="text-align:left">${g.title}</h2>
-        ${g.ids.map(id => {
-          const p = PARTS[id]; const c = ob.choices[id];
-          return `<div class="ob-food" data-ob="${id}">
-            <div class="thumb" style="${thumbStyle(p)}">${p.emoji}</div>
-            <div class="ob-fi"><div class="rname">${p.name}</div>
-              <div class="ob-chips">
-                ${[['all', '👨‍👩‍👧‍👦 Everyone'], ['adults', '🧑 Adults'], ['kids', '🧒 Kids'], ['no', '🙅 No']]
-                  .map(([v, l]) => `<button class="ob-chip ${c === v ? 'sel' : ''}" data-act="obChoice|${id}|${v}">${l}</button>`).join('')}
-              </div></div>
-          </div>`;
-        }).join('')}`).join('')}
+    const mine = Object.keys(myFoods).filter(id => myFoods[id] && PARTS[id]);
+    const q = ob.q.trim().toLowerCase();
+    const results = q ? Object.entries(PARTS)
+      .filter(([id, p]) => !myFoods[id] && mfMatch(id, p, q))
+      .sort((a, b) => a[1].name.localeCompare(b[1].name)).slice(0, 12) : [];
+    el.innerHTML = `<div class="ob-wrap" style="text-align:left">
+      <h2 style="margin-top:8px">Build your food list</h2>
+      <p class="muted" style="margin:6px 0 14px;line-height:1.5">This list is what your weekly plans are built from. Add the foods your family actually eats, then tune each one: <b>which meals</b> it's for (☀️🥪🌙), <b>who</b> it's for, and <b>how often</b> you want it (●○ 1–5).</p>
+
+      <input class="inp" id="ob-search" placeholder="🔍 Search foods to add — 'egusi', 'pasta', 'breakfast'…" value="${ob.q.replace(/"/g, '&quot;')}" data-inp="obSearch"
+        style="width:100%;font:inherit;font-size:.9rem;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;margin:2px 0 10px;background:#fff">
+      ${results.length ? `<div class="pick-list">${results.map(([id, p]) => `
+        <div class="pick" style="cursor:default">
+          <div class="thumb" style="${thumbStyle(p)}">${emo(p)}</div>
+          <div class="pi"><div class="rname">${p.name}</div><div class="rsub">${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : p.type === 'protein' ? ' · protein' : ''}</div></div>
+          <button class="btn btn-sm btn-ghost" data-act="toggleMyFood|${id}">＋ Add</button>
+        </div>`).join('')}</div>` : ''}
+      ${q && !results.length ? '<p class="muted" style="margin:0 0 10px">Nothing local matches — you can research foods online later in You ▸ My food list.</p>' : ''}
+
+      ${!q ? `${ONBOARD_GROUPS.map(g => `
+        <div class="shop-cat" style="margin-top:12px">${g.title}</div>
+        <div class="chiplist">${g.ids.map(id => `<span class="chip ${myFoods[id] ? 'love' : ''}" data-act="toggleMyFood|${id}">${PARTS[id].emoji} ${PARTS[id].name}</span>`).join('')}</div>`).join('')}` : ''}
+
+      <h2 class="section">Your list <span class="muted">${mine.length} food${mine.length === 1 ? '' : 's'}</span></h2>
+      ${mine.length ? mine.map(id => {
+        const p = PARTS[id];
+        return `<div class="ob-food" style="flex-wrap:wrap">
+          <div class="thumb" style="${thumbStyle(p)}">${emo(p)}</div>
+          <div class="ob-fi"><div class="rname">${p.name}</div></div>
+          <button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="toggleMyFood|${id}">✕</button>
+          <div style="flex-basis:100%">${tagControlsHtml(id)}</div>
+        </div>`;
+      }).join('') : '<p class="muted">Nothing yet — tap foods above to add them.</p>'}
+
+      <div class="card" style="margin-top:14px">
+        <h2 class="section" style="margin-top:0">How should I use your list?</h2>
+        ${[['strict', '🎯 Plan only from my list', 'Every suggested meal comes from the foods above.'],
+           ['boost', '✨ My list first, surprise me sometimes', 'Your foods get priority, but new ideas can appear.']]
+          .map(([v, t, d]) => `<div class="ob-style ${settings.poolMode === v ? 'sel' : ''}" data-act="obPool|${v}"><b>${t}</b><span>${d}</span></div>`).join('')}
+      </div>
+
       <div class="week-toolbar" style="margin-top:14px">
         <button class="btn btn-ghost" data-act="obStep|1">← Back</button>
         <button class="btn btn-primary" data-act="finishOnboarding">Build my plan ✨</button>
       </div>
     </div>`;
   }
-  $('#onboard').scrollTop = 0;
+  if (!ob.keepScroll) $('#onboard').scrollTop = 0;
+  ob.keepScroll = false;
 }
 
 function obBump(k, d) { settings[k] = Math.max(k === 'adults' ? 1 : 0, Math.min(8, settings[k] + d)); saveAll(); renderOnboarding(); }
@@ -1290,22 +1353,19 @@ function obStyle(v) { settings.cookStyle = v; saveAll(); renderOnboarding(); }
 function obStep(n) { ob.step = n; renderOnboarding(); }
 function setCoverage(mealType, aud, v) { settings.coverage[mealType][aud] = v; saveAll(); }
 
-function obChoice(id, v) {
-  ob.choices[id] = ob.choices[id] === v ? undefined : v;
-  const card = $(`.ob-food[data-ob="${id}"]`);
-  if (card) $$('.ob-chip', card).forEach(b => b.classList.toggle('sel', b.getAttribute('data-act').endsWith('|' + (ob.choices[id] || '§'))));
+function obSearch(v) {
+  ob.q = v; ob.keepScroll = true;
+  renderOnboarding();
+  const i = $('#ob-search');
+  if (i) { i.focus(); i.selectionStart = i.selectionEnd = i.value.length; }
+}
+function obPool(v) {
+  settings.poolMode = v; saveAll();
+  const el = $('#onboard'); const st = el.scrollTop;
+  ob.keepScroll = true; renderOnboarding(); el.scrollTop = st;
 }
 
 function finishOnboarding() {
-  for (const id in ob.choices) {
-    const v = ob.choices[id];
-    if (!v) continue;
-    delete prefs.like[id]; delete prefs.dislike[id]; delete prefs.kidFav[id]; delete prefs.adultFav[id];
-    if (v === 'all') { prefs.like[id] = true; prefs.kidFav[id] = true; prefs.adultFav[id] = true; }
-    else if (v === 'adults') prefs.adultFav[id] = true;
-    else if (v === 'kids') prefs.kidFav[id] = true;
-    else if (v === 'no') prefs.dislike[id] = true;
-  }
   store.save('onboarded', true);
   saveAll();
   $('#onboard').classList.remove('open');
@@ -1313,7 +1373,8 @@ function finishOnboarding() {
   plan = plans[weekKey(weekOffset)];
   saveAll();
   renderPlanner(); renderShopping(); renderRecipes(); renderYou();
-  toast('Your week is planned — and it learns as you react 💚');
+  const n = Object.keys(myFoods).filter(k => myFoods[k]).length;
+  toast(n ? `Week planned from your ${n}-food list — tune it any time in You 💚` : 'Your week is planned — build your list in You ▸ My food list 💚');
 }
 
 /* ---------- my food list (curated planning pool) ---------- */
@@ -1322,9 +1383,7 @@ let myFoodsQuery = '';
 function toggleMyFood(id) {
   if (myFoods[id]) delete myFoods[id]; else myFoods[id] = true;
   saveAll();
-  if ($('#myfoods').classList.contains('open')) renderMyFoods();
-  if (modalCtx) openRecipe(modalCtx.cid, modalCtx.slotKey, modalCtx.who);
-  renderYou();
+  refreshTagSurfaces();
 }
 
 let mfTimer = null;
@@ -1633,7 +1692,7 @@ function renderMyFoods() {
           </div>
           <button class="btn btn-sm ${myFoods[id] ? 'btn-green' : 'btn-ghost'}" data-act="toggleMyFood|${id}">${myFoods[id] ? '✓ On list' : '＋ Add'}</button>
           ${p.custom ? `<button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="removeCustomPart|${id}">✕</button>` : ''}
-        </div>`).join('') || (q ? '' : '<p class="muted">Start typing to search your foods and the online food database.</p>')}
+        </div>${myFoods[id] ? `<div class="tagctl-row">${tagControlsHtml(id)}</div>` : ''}`).join('') || (q ? '' : '<p class="muted">Start typing to search your foods and the online food database.</p>')}
     </div>
     ${q.trim().length >= 3 ? `
       <h2 class="section">🌐 From the free food database</h2>
@@ -1783,13 +1842,13 @@ function toast(msg) {
 const ACTIONS = {
   switchTab, setPlanView, generateWeek, weekNav, openRecipe, openPicker, assignSlot, clearSlot,
   closeModal, rate, toggleLike, toggleDislike, toggleKidFav, toggleAdultFav, quickAdd,
-  swapSide, moreSides, swapProt, moreProts, tagMeal, tagWho, surpriseSlot, openInspire, keepSlot, removeSlot,
+  swapSide, moreSides, swapProt, moreProts, tagMeal, tagWho, bumpFreq, surpriseSlot, openInspire, keepSlot, removeSlot,
   toggleMyFood, openMyFoods, closeMyFoods, searchMyFoods, setPoolMode,
   importMeal, openManualFood, saveManualFood, removeCustomPart, openPacks, exportPack, importPack,
   toggleCheck, togglePriceEdit, setPrice, setCustomPrice, copyList, openAddModal, addExtra,
   addCustom, bumpItem, removeItem, bump, setSetting, setCoverage, toggleAllergen, resetPrefs, resetPrices,
   setFilter, searchAdd, renderRecipes, setShopScope,
-  startOnboarding, obBump, obStyle, obStep, obChoice, finishOnboarding,
+  startOnboarding, obBump, obStyle, obStep, obSearch, obPool, finishOnboarding,
 };
 
 /* ---------- boot ---------- */

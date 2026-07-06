@@ -156,6 +156,21 @@ h2.section { font-size: 1.05rem; margin: 18px 0 10px; display: flex; align-items
 }
 .ob-chip.sel { background: var(--green); border-color: var(--green); color: #fff; }
 
+/* ---------- inline tag + frequency controls ---------- */
+.tagctl { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.tagctl .ob-chip { padding: 4px 8px; }
+.tag-sep { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
+.tagctl-row {
+  background: #fbf7ef; border: 1px solid var(--line); border-top: none;
+  border-radius: 0 0 14px 14px; padding: 7px 12px; margin: -10px 0 8px;
+}
+.freq-ctl { display: inline-flex; align-items: center; gap: 5px; }
+.freq-ctl button {
+  width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid var(--line);
+  background: #fff; font-size: .8rem; font-weight: 800; cursor: pointer; line-height: 1; padding: 0;
+}
+.freq-ctl .fv { font-size: .6rem; letter-spacing: 1px; color: var(--green-dark); }
+
 /* ---------- meal coverage (which meals to plan) ---------- */
 .cov-row { padding: 10px 0; border-top: 1px solid var(--line); }
 .cov-row:first-of-type { border-top: none; }

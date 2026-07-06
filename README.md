@@ -25,10 +25,14 @@ Wi-Fi), then **Add to Home Screen** for an app-like feel.
   weekends / don't plan — school dinners and work lunches respected in both
   the plan and the shopping list), then a component taste quiz.
   Retake any time from You ▸ taste profile.
-- **My food list** (You ▸ Manage my list) — smart-search the whole catalogue
-  ("kids breakfast", "nigerian batch", "soup") and curate the foods plans are
-  built around. Two modes: *Prefer my list* (priority boost) or *Only my list*
-  (strict, with automatic fallback if a meal type runs thin).
+- **My food list** (You ▸ Manage my list) — the heart of the planner.
+  Onboarding starts here: build the list of foods your family actually eats
+  (quick picks + smart search), and tune each one inline — which meals
+  (☀️🥪🌙), who it's for (everyone/adults/kids) and **how often** you want it
+  (1–5 frequency dial, 3 = neutral; high = appears more and may repeat,
+  low = rare treat). Two modes: *Only my list* (strict, with automatic
+  fallback if a meal type runs thin — the default) or *My list first with
+  occasional discovery*. Manage and re-weight the list any time.
 - **A database that grows** — every My Food List search also queries the free
   community food database ([TheMealDB](https://www.themealdb.com)) live; one
   tap imports a dish with photo, instructions and ingredients auto-mapped onto
