@@ -225,6 +225,7 @@ function comboScore(cid, opts = {}) {
     if (ps < -100) return -999;              // disliked protein kills the combo
     s += ps * 0.35;
   }
+  if (userCombos.includes(cid)) s += 4 + (freqOf(cid) - 3) * 2.5;   // your saved plate + its how-often dial
   const sameCuisineRun = (opts.recentIds || []).slice(-2).filter(x => PARTS[x]?.cuisine === m.cuisine).length;
   s -= sameCuisineRun * 2;
   s += Math.random() * 4;
@@ -409,6 +410,7 @@ function cookStats(p) {
 }
 
 function renderPlanner() {
+  renderToday();
   const dates = weekDates(weekOffset);
   const todayIdx = weekOffset === 0 ? (new Date().getDay() + 6) % 7 : -1;
   $('#week-nav').innerHTML = `
@@ -629,7 +631,11 @@ function openRecipe(cid, slotKey, who) {
         <button class="btn btn-ghost ${prefs.kidFav[id] ? 'on-like' : ''}" data-act="toggleKidFav|${id}">🧒 Kids' favourite</button>
         <button class="btn btn-ghost ${prefs.adultFav[id] ? 'on-like' : ''}" data-act="toggleAdultFav|${id}">🧑 Adults' favourite</button>
       </div>
-      <button class="btn btn-ghost ${myFoods[id] ? 'on-like' : ''}" style="width:100%;margin-top:8px" data-act="toggleMyFood|${id}">${myFoods[id] ? '✓ On my food list' : '📌 Add to my food list'}</button>
+      <button class="btn btn-ghost ${myFoods[id] ? 'on-like' : ''}" style="width:100%;margin-top:8px" data-act="toggleMyFood|${id}">${myFoods[id] ? '✓ On my menu' : '📌 Add to my menu'}</button>
+      ${userCombos.includes(cid) ? `
+      <div class="serve-with" style="margin-top:8px"><span class="sw-label">🍽 Your plate — how often?</span>
+        <span class="freq-ctl"><button data-act="bumpFreq|${cid}|-1">−</button><span class="fv">${'●'.repeat(freqOf(cid))}${'○'.repeat(5 - freqOf(cid))}</span><button data-act="bumpFreq|${cid}|1">＋</button></span>
+      </div>` : ''}
       ${slotKey ? `
       <div class="react-row" style="margin-top:12px">
         <button class="btn btn-green" data-act="keepSlot|${slotKey}">👍 Keep it</button>
@@ -861,7 +867,145 @@ function clearSlot(key) {
   if (plan?.[key]) { recordReject(plan[key]); delete plan[key]; }
   saveAll(); renderPlanner(); renderShopping(); closeModal();
 }
-function closeModal() { $('#modal').classList.remove('open'); modalCtx = null; }
+function closeModal() {
+  if (cook) { stopCookTimer(); cook.wl?.release?.(); cook = null; }
+  $('#modal').classList.remove('open'); modalCtx = null;
+}
+
+/* ---------- Today: what's happening food-wise right now ---------- */
+function renderToday() {
+  const el = $('#today-card');
+  if (!el) return;
+  if (weekOffset !== 0 || !plan) { el.innerHTML = ''; return; }
+  const di = (new Date().getDay() + 6) % 7;
+  const day = DAYS[di];
+  const rows = MEALS.map(mt => {
+    const key = `${day}-${mt}`;
+    const slot = plan[key];
+    if (!slot) return '';
+    const cid = slot.f || slot.a || slot.k;
+    const m = mealOf(cid);
+    if (!m) return '';
+    const who = slot.f ? 'f' : slot.a ? 'a' : 'k';
+    const kidM = slot.k && slot.a ? mealOf(slot.k) : null;
+    return `<div class="slot" style="padding:8px 0;border-top:1px solid #e3efe6">
+      <div class="meal-label">${MEAL_ICONS[mt]}</div>
+      <div class="thumb" style="${thumbStyle(m)}" data-act="openRecipe|${cid}|${key}|${who}">${emo(m)}</div>
+      <div class="info" data-act="openRecipe|${cid}|${key}|${who}" style="cursor:pointer">
+        <div class="rname">${m.name}</div>
+        <div class="rsub">${slot.lo ? '♻ reheat · ~10 min' : m.mins + ' min'}${kidM ? ` · kids: ${kidM.name}` : ''}</div>
+      </div>
+      ${mt !== 'b' ? `<button class="btn btn-sm btn-primary" data-act="startCooking|${cid}" title="Cook mode">▶</button>` : ''}
+      <button class="btn btn-sm ${slot.done ? 'btn-green' : 'btn-ghost'}" data-act="markEaten|${key}" title="We ate this">${slot.done ? '✓' : 'Ate it?'}</button>
+    </div>`;
+  }).join('');
+  // defrost / fridge nudge when tomorrow reuses a batch
+  const nudges = di < 6 ? MEALS.map(mt => plan[`${DAYS[di + 1]}-${mt}`])
+    .filter(s => s && s.lo).map(s => mealOf(s.f || s.a || s.k)?.main.name).filter(Boolean) : [];
+  el.innerHTML = rows ? `<div class="cook-card" style="border-color:#cde5d4;background:linear-gradient(135deg,#f0faf3,#fff)">
+    <div style="font-weight:800;font-size:.92rem">📍 Today · ${DAY_NAMES[day]} ${fmtDate(new Date())}</div>
+    ${rows}
+    ${nudges.length ? `<div class="muted" style="margin-top:7px;font-size:.76rem">🧊 Tomorrow reuses <b>${[...new Set(nudges)].join(', ')}</b> — check it's out of the freezer tonight.</div>` : ''}
+  </div>` : '';
+}
+
+function markEaten(key) {
+  const slot = plan?.[key];
+  if (!slot) return;
+  slot.done = !slot.done;
+  if (slot.done) {
+    for (const { id } of slotRecipes(slot)) {
+      const mainId = mealOf(id)?.mainId;
+      if (!mainId) continue;
+      prefs.accept[mainId] = (prefs.accept[mainId] || 0) + 1;
+      prefs.cooked[mainId] = (prefs.cooked[mainId] || 0) + 1;
+    }
+    toast('Noted — I\'ll lean into meals like this 👍');
+  }
+  saveAll();
+  renderPlanner();
+}
+
+/* ---------- cook mode: big steps, timers, screen stays awake ---------- */
+let cook = null;   // {cid, i, steps:[[section,text]], timerEnd, timerInt, wl}
+function startCooking(cid) {
+  const m = mealOf(cid);
+  if (!m) return;
+  const steps = [
+    ...m.main.steps.map(s => [m.main.name, s]),
+    ...(m.prot ? m.prot.steps.map(s => [m.prot.name, s]) : []),
+    ...(m.side ? m.side.steps.map(s => [m.side.name, s]) : []),
+  ];
+  cook = { cid, i: 0, steps, timerEnd: null, timerInt: null, wl: null };
+  if (navigator.wakeLock) navigator.wakeLock.request('screen').then(wl => { if (cook) cook.wl = wl; }).catch(() => {});
+  renderCook();
+  $('#modal').classList.add('open');
+}
+function stopCookTimer() {
+  if (cook?.timerInt) clearInterval(cook.timerInt);
+  if (cook) { cook.timerInt = null; cook.timerEnd = null; }
+}
+function cookNav(d) {
+  if (!cook) return;
+  stopCookTimer();
+  cook.i = Math.max(0, Math.min(cook.steps.length, cook.i + d));
+  renderCook();
+}
+function cookTimer(mins) {
+  if (!cook || cook.timerInt) return;
+  cook.timerEnd = Date.now() + mins * 60000;
+  cook.timerInt = setInterval(() => {
+    if (!cook || !cook.timerEnd) return;
+    const left = cook.timerEnd - Date.now();
+    const t = $('#cook-timer');
+    if (left <= 0) {
+      stopCookTimer();
+      if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+      toast('⏰ Timer done!');
+      if (t) t.textContent = '⏰ Done!';
+    } else if (t) t.textContent = '⏱ ' + Math.floor(left / 60000) + ':' + String(Math.floor(left % 60000 / 1000)).padStart(2, '0') + ' left';
+  }, 500);
+  renderCook();
+}
+function endCooking(feedback) {
+  const m = cook ? mealOf(cook.cid) : null;
+  if (m && feedback === 'good') {
+    prefs.accept[m.mainId] = (prefs.accept[m.mainId] || 0) + 1;
+    prefs.cooked[m.mainId] = (prefs.cooked[m.mainId] || 0) + 1;
+    saveAll();
+    toast('Beautiful — noted for future plans 👨‍🍳');
+  }
+  closeModal();   // also releases timer + wake lock
+  renderPlanner(); renderYou();
+}
+function renderCook() {
+  if (!cook) return;
+  const m = mealOf(cook.cid);
+  const done = cook.i >= cook.steps.length;
+  const [section, txt] = done ? ['', ''] : cook.steps[cook.i];
+  const mins = !done && (txt.match(/(\d+)(?:\s*[–-]\s*\d+)?\s*min/) || [])[1];
+  $('#modal-content').innerHTML = `
+    <div class="m-body" style="padding-top:20px;position:relative">
+      <button class="m-close" data-act="endCooking|">✕</button>
+      <span class="pill pill-ng">👨‍🍳 Cooking · screen stays on</span>
+      <h3 style="margin-top:8px">${m.name}</h3>
+      ${done ? `
+        <div class="empty-state" style="padding:24px"><div class="big">🎉</div>All done — serve it up!</div>
+        <div class="react-row">
+          <button class="btn btn-green" data-act="endCooking|good">😋 It was a hit</button>
+          <button class="btn btn-ghost" data-act="endCooking|">Done</button>
+        </div>`
+      : `
+        <div class="muted" style="margin:10px 0 2px">Step ${cook.i + 1} of ${cook.steps.length} · ${section}</div>
+        <p style="font-size:1.18rem;line-height:1.65;margin:8px 0 16px">${txt}</p>
+        ${cook.timerInt ? '<div class="splitbox" id="cook-timer" style="text-align:center">⏱ …</div>'
+          : (mins ? `<button class="btn btn-ghost" style="width:100%;margin-bottom:8px" data-act="cookTimer|${mins}">⏱ Start ${mins} min timer</button>` : '')}
+        <div class="react-row">
+          <button class="btn btn-ghost" data-act="cookNav|-1" ${cook.i === 0 ? 'disabled' : ''}>← Back</button>
+          <button class="btn btn-primary" data-act="cookNav|1">${cook.i === cook.steps.length - 1 ? 'Finish ✓' : 'Next →'}</button>
+        </div>`}
+    </div>`;
+}
 
 /* ---------- inspire me: things you haven't tried ----------
    Deliberately spans ALL cuisines (one Nigerian, one British, one fusion when
@@ -1720,41 +1864,126 @@ function mfMatch(id, p, q) {
   return q.toLowerCase().split(/\s+/).every(w => hay.includes(w));
 }
 
+/* one food row, used everywhere a food is listed */
+function foodRowHtml(id, p) {
+  const cid = p.type === 'main' ? defaultCombo(id) : id;
+  return `<div class="pick" style="cursor:default">
+    <div class="thumb" style="${thumbStyle(p)}" data-act="openRecipe|${cid}">${emo(p)}</div>
+    <div class="pi" data-act="openRecipe|${cid}" style="cursor:pointer">
+      <div class="rname">${p.name}</div>
+      <div class="rsub">${myFoods[id] ? tagSummaryHtml(id) : `${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : p.type === 'protein' ? ' · protein' : ''}${BATCH[id] ? ' · ♻' : ''}${p.kid >= 2 ? ' · 👧' : ''}${p.custom ? ' · yours' : ''}`}</div>
+    </div>
+    <button class="btn btn-sm ${myFoods[id] ? 'btn-green' : 'btn-ghost'}" data-act="toggleMyFood|${id}">${myFoods[id] ? '✓' : '＋ Add'}</button>
+    ${p.custom ? `<button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="removeCustomPart|${id}">✕</button>` : ''}
+  </div>`;
+}
+
+let menuView = 'foods';   // foods | plates
+function setMenuView(v) { menuView = v; renderMyFoods(); }
+
+/* plate builder state */
+let pb = { m: null, p: null, s: null };
+function pbSet(slot, id) {
+  pb[slot] = pb[slot] === id ? null : (id === '_none' ? null : id);
+  if (slot === 'm') { pb.p = null; pb.s = null; }
+  renderMyFoods();
+  const el = $('#plate-builder'); if (el) el.scrollIntoView({ block: 'nearest' });
+}
+function savePlate() {
+  if (!pb.m) { toast('Pick a base first'); return; }
+  const cid = makeCid(pb.m, pb.p, pb.s);
+  if (!userCombos.includes(cid) && (pb.p || pb.s)) userCombos.push(cid);
+  myFoods[pb.m] = true;
+  if (pb.p) myFoods[pb.p] = true;
+  if (pb.s) myFoods[pb.s] = true;
+  saveAll();
+  toast(`${mealOf(cid).name} saved to your plates 🍽`);
+  pb = { m: null, p: null, s: null };
+  refreshTagSurfaces();
+}
+function removePlate(cid) {
+  userCombos = userCombos.filter(c => c !== cid);
+  delete foodTags[cid];
+  saveAll();
+  refreshTagSurfaces();
+}
+
+function plateBuilderHtml() {
+  const chip = (slot, id, name, emoji) =>
+    `<span class="chip ${pb[slot] === id ? 'love' : ''}" data-act="pbSet|${slot}|${id}">${emoji} ${name}</span>`;
+  const mains = Object.entries(PARTS).filter(([, p]) => p.type === 'main')
+    .sort((a, b) => (myFoods[b[0]] ? 1 : 0) - (myFoods[a[0]] ? 1 : 0) || a[1].name.localeCompare(b[1].name));
+  const prots = pb.m ? [...new Set([...(PROTEIN_PAIRS[pb.m] || []), ...Object.keys(PARTS).filter(k => PARTS[k].type === 'protein')])] : [];
+  const sides = pb.m ? [...new Set([...(PAIRS[pb.m] || []), ...Object.keys(PARTS).filter(k => PARTS[k].type === 'side')])] : [];
+  const preview = pb.m ? mealOf(makeCid(pb.m, pb.p, pb.s)) : null;
+  return `<div class="card" id="plate-builder">
+    <h2 class="section" style="margin-top:0">＋ Build a plate</h2>
+    <p class="muted" style="margin:0 0 8px">Combine foods YOUR way — the planner then treats the plate as one of your go-to meals.</p>
+    <div class="shop-cat">1 · Base</div>
+    <div class="chiplist">${mains.map(([id, p]) => chip('m', id, p.name, p.emoji)).join('')}</div>
+    ${pb.m ? `<div class="shop-cat" style="margin-top:10px">2 · Protein (optional)</div>
+      <div class="chiplist">${prots.map(id => chip('p', id, PARTS[id].name, PARTS[id].emoji)).join('')}</div>
+      <div class="shop-cat" style="margin-top:10px">3 · Side (optional)</div>
+      <div class="chiplist">${sides.map(id => chip('s', id, PARTS[id].name, PARTS[id].emoji)).join('')}</div>` : ''}
+    ${preview ? `<div class="splitbox" style="margin-top:12px">🍽 <b>${preview.name}</b> · ${preview.kcal} kcal · ${preview.protein}g protein</div>
+      <button class="btn btn-green" style="width:100%" data-act="savePlate">✓ Save this plate</button>` : ''}
+  </div>`;
+}
+
 function renderMyFoods() {
   const q = myFoodsQuery;
-  const mine = Object.keys(myFoods).filter(id => myFoods[id] && PARTS[id]);
-  const results = Object.entries(PARTS).filter(([id, p]) => mfMatch(id, p, q))
-    .sort((a, b) => (myFoods[b[0]] ? 1 : 0) - (myFoods[a[0]] ? 1 : 0) || a[1].name.localeCompare(b[1].name));
+  const mine = Object.keys(myFoods).filter(id => myFoods[id] && PARTS[id])
+    .sort((a, b) => PARTS[a].name.localeCompare(PARTS[b].name));
+  const plates = userCombos.filter(c => mealOf(c));
+
+  let body = '';
+  if (menuView === 'foods') {
+    const results = q ? Object.entries(PARTS).filter(([id, p]) => mfMatch(id, p, q))
+      .sort((a, b) => (myFoods[b[0]] ? 1 : 0) - (myFoods[a[0]] ? 1 : 0) || a[1].name.localeCompare(b[1].name)) : [];
+    body = `
+      <input class="inp" id="mf-search" placeholder="🔍 Search any food — yours, built-in, or the online database…" value="${q.replace(/"/g, '&quot;')}" data-inp="searchMyFoods"
+        style="width:100%;font:inherit;font-size:.9rem;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;margin:2px 0 6px;background:#fff">
+      <p class="muted" style="margin:0 2px 10px;font-size:.74rem">Tap a food to open it — recipe, macros and its planning controls (☀️🥪🌙 · who · ●○ how often).</p>
+      ${q ? `<div class="pick-list">${results.map(([id, p]) => foodRowHtml(id, p)).join('')}</div>
+        ${onlineSectionHtml(q)}`
+      : `${mine.length ? `<div class="pick-list">${mine.map(id => foodRowHtml(id, PARTS[id])).join('')}</div>`
+          : '<div class="empty-state"><div class="big">🍲</div>Your menu is empty.<br>Search above to add the foods your family eats.</div>'}
+        <button class="btn btn-ghost" style="width:100%;margin:10px 0 20px" data-act="openManualFood|">✍️ Teach me a food of my own</button>`}`;
+  } else {
+    body = `
+      <p class="muted" style="margin:0 2px 10px;font-size:.74rem">Plates are YOUR combinations — base + protein + side. The planner prefers them over its own guesses.</p>
+      ${plates.length ? `<div class="pick-list">${plates.map(cid => {
+        const m = mealOf(cid);
+        return `<div class="pick" style="cursor:default">
+          <div class="thumb" style="${thumbStyle(m)}" data-act="openRecipe|${cid}">${emo(m)}</div>
+          <div class="pi" data-act="openRecipe|${cid}" style="cursor:pointer">
+            <div class="rname">${m.name}</div>
+            <div class="rsub">${m.kcal} kcal · ${m.protein}g protein${foodTags[cid]?.freq ? ` · <span style="color:var(--green-dark)">${'●'.repeat(freqOf(cid))}${'○'.repeat(5 - freqOf(cid))}</span>` : ''}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="removePlate|${cid}">✕</button>
+        </div>`;
+      }).join('')}</div>` : '<p class="muted" style="margin:0 0 12px">No plates yet — build your first one below.</p>'}
+      ${plateBuilderHtml()}`;
+  }
+
   $('#myfoods').innerHTML = `<div class="ob-wrap" style="text-align:left">
-    <div class="week-nav" style="margin-bottom:14px">
+    <div class="week-nav" style="margin-bottom:12px">
       <button class="wn-btn" data-act="closeMyFoods">‹</button>
-      <div class="wn-label"><b>🍲 My food list</b><span>${mine.length ? mine.length + ' foods I plan around' : 'foods you want me to plan with'}</span></div>
+      <div class="wn-label"><b>🍲 My menu</b><span>${mine.length} food${mine.length === 1 ? '' : 's'} · ${plates.length} plate${plates.length === 1 ? '' : 's'} — what your plans are built from</span></div>
       <span style="width:38px"></span>
     </div>
-    <div class="card">
-      <div class="setting-row" style="padding-top:0"><div><div class="sl">How to use the list</div><div class="sd">Strict = plan only from my list (falls back if a meal has too few options)</div></div>
+    <div class="view-toggle" style="margin:0 0 12px">
+      <button class="${menuView === 'foods' ? 'active' : ''}" data-act="setMenuView|foods">🍛 My foods</button>
+      <button class="${menuView === 'plates' ? 'active' : ''}" data-act="setMenuView|plates">🍽 My plates</button>
+    </div>
+    ${body}
+    <div class="card" style="margin-top:6px">
+      <div class="setting-row" style="padding-top:0"><div><div class="sl">How plans use your menu</div><div class="sd">Strict = only my foods (falls back if a meal runs thin)</div></div>
         <select class="inp" data-chg="setPoolMode">
-          <option value="boost" ${settings.poolMode === 'boost' ? 'selected' : ''}>Prefer my list</option>
-          <option value="strict" ${settings.poolMode === 'strict' ? 'selected' : ''}>Only my list</option>
+          <option value="boost" ${settings.poolMode === 'boost' ? 'selected' : ''}>Prefer my menu</option>
+          <option value="strict" ${settings.poolMode === 'strict' ? 'selected' : ''}>Only my menu</option>
         </select></div>
     </div>
-    <input class="inp" id="mf-search" placeholder="🔍 Smart search — try 'kids breakfast', 'nigerian batch', 'soup'…" value="${q.replace(/"/g, '&quot;')}" data-inp="searchMyFoods"
-      style="width:100%;font:inherit;font-size:.9rem;padding:11px 14px;border:1.5px solid var(--line);border-radius:14px;margin:2px 0 6px;background:#fff">
-    <p class="muted" style="margin:0 2px 10px;font-size:.74rem">Tap any food to open it — recipe, macros, and its planning controls (☀️🥪🌙 meals · who · ●○ how often) all live on the card.</p>
-    <div class="pick-list">
-      ${results.map(([id, p]) => `
-        <div class="pick" style="cursor:default">
-          <div class="thumb" style="${thumbStyle(p)}" data-act="openRecipe|${p.type === 'main' ? defaultCombo(id) : id}">${emo(p)}</div>
-          <div class="pi" data-act="openRecipe|${p.type === 'main' ? defaultCombo(id) : id}" style="cursor:pointer">
-            <div class="rname">${p.name}</div>
-            <div class="rsub">${myFoods[id] ? tagSummaryHtml(id) : `${CUISINE_NAMES[p.cuisine]}${p.type === 'side' ? ' · side' : p.type === 'protein' ? ' · protein' : ''}${BATCH[id] ? ' · ♻' : ''}${p.kid >= 2 ? ' · 👧' : ''}${p.custom ? ' · 🌐 yours' : ''}`}</div>
-          </div>
-          <button class="btn btn-sm ${myFoods[id] ? 'btn-green' : 'btn-ghost'}" data-act="toggleMyFood|${id}">${myFoods[id] ? '✓ On list' : '＋ Add'}</button>
-          ${p.custom ? `<button class="btn btn-ghost btn-sm" style="color:#a52222" data-act="removeCustomPart|${id}">✕</button>` : ''}
-        </div>`).join('') || (q ? '' : '<p class="muted">Start typing to search your foods and the online food database.</p>')}
-    </div>
-    ${q.trim().length >= 3 ? onlineSectionHtml(q)
-      : `<button class="btn btn-ghost" style="width:100%;margin:10px 0 20px" data-act="openManualFood|">✍️ Teach me a food of my own</button>`}
   </div>`;
 }
 
@@ -1887,6 +2116,8 @@ const ACTIONS = {
   closeModal, rate, toggleLike, toggleDislike, toggleKidFav, toggleAdultFav, quickAdd,
   swapSide, moreSides, swapProt, moreProts, tagMeal, tagWho, bumpFreq, surpriseSlot, openInspire, keepSlot, removeSlot,
   toggleMyFood, openMyFoods, closeMyFoods, searchMyFoods, setPoolMode,
+  setMenuView, pbSet, savePlate, removePlate,
+  markEaten, startCooking, cookNav, cookTimer, endCooking,
   importMeal, openManualFood, saveManualFood, removeCustomPart, openPacks, exportPack, importPack,
   toggleCheck, togglePriceEdit, setPrice, setCustomPrice, copyList, openAddModal, addExtra,
   addCustom, bumpItem, removeItem, bump, setSetting, setCoverage, toggleAllergen, resetPrefs, resetPrices,

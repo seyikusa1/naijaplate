@@ -9,7 +9,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <header>
@@ -26,6 +26,7 @@
         <button class="btn btn-ghost" data-act="openInspire">🎲 Inspire me</button>
         <button class="btn btn-ghost" data-act="switchTab|shop">🛒 Shopping list</button>
       </div>
+      <div id="today-card"></div>
       <div id="cook-plan"></div>
       <div class="view-toggle">
         <button class="active" data-view="family" data-act="setPlanView|family">👨‍👩‍👧‍👦 Family</button>
@@ -83,10 +84,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="sync-config.js?v=13"></script>
-  <script src="data.js?v=13"></script>
-  <script src="app.js?v=13"></script>
-  <script src="sync.js?v=13"></script>
+  <script src="sync-config.js?v=14"></script>
+  <script src="data.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+  <script src="sync.js?v=14"></script>
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('sw.js');
