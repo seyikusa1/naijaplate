@@ -78,6 +78,27 @@ const PRICEBOOK = {
   peas:        { name: 'Garden peas (frozen)',  cat: 'Frozen',         pack: '1kg',    aldi: 0.95, tesco: 1.20, sains: 1.30, asda: 1.10 },
   mixed_veg:   { name: 'Mixed veg (frozen)',    cat: 'Frozen',         pack: '1kg',    aldi: 0.90, tesco: 1.10, sains: 1.20, asda: 1.00 },
   oven_chips:  { name: 'Oven chips',            cat: 'Frozen',         pack: '1.5kg',  aldi: 1.15, tesco: 1.50, sains: 1.60, asda: 1.35 },
+
+  tortillas:   { name: 'Tortilla wraps',        cat: 'Bakery',         pack: '8pk',    aldi: 0.69, tesco: 0.90, sains: 0.95, asda: 0.85 },
+  burger_buns: { name: 'Burger buns',           cat: 'Bakery',         pack: '6pk',    aldi: 0.49, tesco: 0.65, sains: 0.70, asda: 0.60 },
+  naan:        { name: 'Naan breads',           cat: 'Bakery',         pack: '2pk',    aldi: 0.69, tesco: 0.90, sains: 0.95, asda: 0.85 },
+  garlic_brd:  { name: 'Garlic baguette',       cat: 'Frozen',         pack: 'each',   aldi: 0.39, tesco: 0.55, sains: 0.60, asda: 0.50 },
+  pizza_base:  { name: 'Pizza bases',           cat: 'Bakery',         pack: '2pk',    aldi: 0.79, tesco: 1.00, sains: 1.10, asda: 0.95 },
+  lasagne_sh:  { name: 'Lasagne sheets',        cat: 'Store cupboard', pack: '500g',   aldi: 0.55, tesco: 0.75, sains: 0.80, asda: 0.70 },
+  noodles:     { name: 'Egg noodles',           cat: 'Store cupboard', pack: '250g',   aldi: 0.65, tesco: 0.85, sains: 0.90, asda: 0.75 },
+  soy_sauce:   { name: 'Soy sauce',             cat: 'Store cupboard', pack: '150ml',  aldi: 0.59, tesco: 0.85, sains: 0.90, asda: 0.80 },
+  curry_paste: { name: 'Curry paste (tikka/korma)', cat: 'Store cupboard', pack: '290g jar', aldi: 0.99, tesco: 1.30, sains: 1.40, asda: 1.20 },
+  kidney_bns:  { name: 'Kidney beans',          cat: 'Store cupboard', pack: '400g tin', aldi: 0.30, tesco: 0.45, sains: 0.50, asda: 0.40 },
+  couscous:    { name: 'Couscous',              cat: 'Store cupboard', pack: '500g',   aldi: 0.60, tesco: 0.80, sains: 0.85, asda: 0.75 },
+  lettuce:     { name: 'Lettuce',               cat: 'Fresh produce',  pack: 'each',   aldi: 0.49, tesco: 0.60, sains: 0.65, asda: 0.55 },
+  cucumber:    { name: 'Cucumber',              cat: 'Fresh produce',  pack: 'each',   aldi: 0.49, tesco: 0.62, sains: 0.65, asda: 0.60 },
+  coleslaw:    { name: 'Coleslaw',              cat: 'Fresh produce',  pack: '300g',   aldi: 0.55, tesco: 0.70, sains: 0.75, asda: 0.65 },
+  mushrooms:   { name: 'Mushrooms',             cat: 'Fresh produce',  pack: '250g',   aldi: 0.85, tesco: 1.05, sains: 1.10, asda: 0.95 },
+  bacon:       { name: 'Smoked bacon',          cat: 'Meat & fish',    pack: '300g',   aldi: 1.65, tesco: 1.95, sains: 2.10, asda: 1.85 },
+  gizzard:     { name: 'Chicken gizzards',      cat: 'World foods',    pack: '500g',   aldi: null, tesco: 1.80, sains: null, asda: 1.60 },
+  ogbono:      { name: 'Ground ogbono',         cat: 'World foods',    pack: '100g',   aldi: null, tesco: 2.80, sains: null, asda: 2.50 },
+  elubo:       { name: 'Yam flour (elubo/amala)', cat: 'World foods',  pack: '1.5kg',  aldi: null, tesco: 4.00, sains: null, asda: 3.60 },
+  banga:       { name: 'Palm nut concentrate',  cat: 'World foods',    pack: '400g tin', aldi: null, tesco: 2.20, sains: null, asda: 2.00 },
 };
 
 const BULK_KEYS = new Set([
@@ -87,6 +108,8 @@ const BULK_KEYS = new Set([
   'garri', 'pyam_flour', 'egusi', 'crayfish', 'dried_fish', 'be_beans', 'tilapia',
   'chicken', 'thighs', 'chick_brst', 'mince', 'stew_beef', 'sausages',
   'fish_fngr', 'white_fish', 'spinach', 'peas', 'mixed_veg', 'oven_chips', 'butter',
+  'lasagne_sh', 'noodles', 'soy_sauce', 'curry_paste', 'kidney_bns', 'couscous',
+  'ogbono', 'elubo', 'banga', 'gizzard', 'pizza_base', 'garlic_brd', 'turkey', 'bacon',
 ]);
 
 /* ============================================================
@@ -380,6 +403,143 @@ const PARTS = {
     desc: 'The kids’ favourite mash-up: crispy fish fingers + sweet fried plantain in soft tacos.',
     ing: [['fish_fngr', 1], ['plantain', 3], ['bread', 0.5, 'or soft tacos'], ['tomatoes', 0.5], ['sweetcorn', 1], ['veg_oil', 0.1]],
     steps: ['Oven-cook the fish fingers.', 'Fry ripe plantain coins until golden.', 'Load tacos with fish, dodo, sweetcorn and tomato. Adults: add hot sauce.'] },
+
+  /* ---------- world & British mains (take a protein / side) ---------- */
+  stir_fry: { name: 'Veg Stir-Fry', emoji: '🥡', grad: ['#2f7d5c', '#12432f'], cuisine: 'world', type: 'main',
+    meals: ['l', 'd'], kid: 2, spice: 0, mins: 25, kcal: 260, protein: 8, health: 5, allergens: [],
+    desc: 'Crunchy wok-fried veg in a garlic-ginger-soy glaze — fast, fresh, endlessly flexible.',
+    ing: [['peppers', 0.7], ['mushrooms', 1], ['carrots', 0.3], ['onions', 0.2], ['garlic', 0.5], ['ginger', 0.5], ['soy_sauce', 0.5], ['veg_oil', 0.1]],
+    steps: ['Slice all the veg thin; mix soy, garlic and ginger for the sauce.', 'Get the pan smoking hot; stir-fry veg 3–4 min, keeping the crunch.', 'Add the sauce for the final minute, tossing to coat.'] },
+
+  curry_night: { name: 'Creamy Curry Sauce', emoji: '🍛', grad: ['#b6741e', '#6e4208'], cuisine: 'world', type: 'main',
+    meals: ['d'], kid: 3, spice: 1, mins: 35, kcal: 340, protein: 8, health: 3, allergens: ['milk'],
+    desc: 'A gentle tikka-style curry sauce the whole table agrees on — pick your protein.',
+    tip: 'Adults: rescue it from mildness with fresh chilli at the table.',
+    ing: [['curry_paste', 0.7], ['plum_tom', 1], ['coconut_mlk', 1], ['onions', 0.3], ['garlic', 0.5], ['ginger', 0.5], ['veg_oil', 0.1]],
+    steps: ['Soften onion, garlic and ginger; fry the curry paste 2 min until fragrant.', 'Add tomatoes and coconut milk; simmer 15 min until rich.', 'Add your cooked protein for the last 5 minutes.'] },
+
+  fajitas: { name: 'Sizzling Fajitas', emoji: '🫔', grad: ['#b3401e', '#5f1d08'], cuisine: 'world', type: 'main',
+    meals: ['d'], kid: 3, spice: 1, mins: 25, kcal: 420, protein: 12, health: 4, allergens: ['gluten'],
+    desc: 'Build-your-own night: charred peppers and onions in warm tortillas. Zero arguments.',
+    ing: [['peppers', 1], ['onions', 0.4], ['tortillas', 1], ['curry_pwd', 0.2, 'fajita spice mix'], ['veg_oil', 0.1], ['tomatoes', 0.5], ['cheese', 0.3]],
+    steps: ['Slice peppers and onions; toss with the spice mix and oil.', 'Sear in a screaming-hot pan until charred at the edges.', 'Warm the tortillas; let everyone build their own with cheese and salsa.'] },
+
+  chilli_con: { name: 'Chilli con Carne', emoji: '🌶', grad: ['#8f2a1a', '#4a0f06'], cuisine: 'world', type: 'main',
+    meals: ['d'], kid: 2, spice: 1, mins: 50, kcal: 420, protein: 30, health: 4, allergens: [],
+    desc: 'Slow-simmered beef and bean chilli — mild for the table, hot sauce for the brave.',
+    ing: [['mince', 1], ['kidney_bns', 2], ['plum_tom', 2], ['onions', 0.3], ['garlic', 0.5], ['puree', 0.3], ['curry_pwd', 0.2, 'cumin & paprika'], ['scotch_b', 0.2, 'adults, optional']],
+    steps: ['Brown the mince with onion and garlic.', 'Add spices, tomatoes, purée and beans; simmer low for 30+ min.', 'Kids’ portions out before any extra chilli goes in.'] },
+
+  /* ---------- more Nigerian mains ---------- */
+  ogbono_soup: { name: 'Ogbono Soup', emoji: '🥣', grad: ['#7a5a24', '#42300c'], cuisine: 'ng', type: 'main',
+    meals: ['l', 'd'], kid: 1, spice: 2, mins: 55, kcal: 420, protein: 32, health: 4, allergens: [],
+    desc: 'The silky draw soup — ground ogbono with assorted meat and smoked fish.',
+    ing: [['ogbono', 1], ['palm_oil', 0.3], ['stew_beef', 1], ['dried_fish', 0.5], ['crayfish', 0.3], ['scotch_b', 0.5], ['spinach', 0.5], ['stock_cubes', 0.2]],
+    steps: ['Boil seasoned beef until tender; keep the stock.', 'Off the heat, whisk ogbono into warm palm oil until smooth.', 'Add stock gradually, stirring — it thickens and draws.', 'Add meat, fish, crayfish and pepper; simmer 10 min. Greens in last.'] },
+
+  edikaikong: { name: 'Edikaikong (Vegetable Soup)', emoji: '🥬', grad: ['#256b35', '#0d3a18'], cuisine: 'ng', type: 'main',
+    meals: ['l', 'd'], kid: 1, spice: 2, mins: 60, kcal: 390, protein: 34, health: 5, allergens: [],
+    desc: 'Calabar’s pride — a dense, barely-any-liquid soup of greens, meat and fish.',
+    ing: [['spinach', 2, '1kg mixed greens'], ['palm_oil', 0.4], ['stew_beef', 1], ['dried_fish', 0.5], ['crayfish', 0.3], ['scotch_b', 0.5], ['onions', 0.2], ['stock_cubes', 0.2]],
+    steps: ['Boil seasoned meat until tender with very little water.', 'Add palm oil, crayfish, fish and pepper; simmer 5 min.', 'Pile in the squeezed greens; steam 5–7 min. It should be thick, not watery.'] },
+
+  ayamase: { name: 'Ayamase (Ofada Stew)', emoji: '🫑', grad: ['#3f6b1e', '#1c3a08'], cuisine: 'ng', type: 'main',
+    meals: ['l', 'd'], kid: 0, spice: 3, mins: 70, kcal: 460, protein: 30, health: 3, allergens: [],
+    desc: 'The green designer stew — bleached palm oil, green peppers, assorted meat. Serious business.',
+    ing: [['peppers', 2, 'green ones'], ['scotch_b', 1], ['palm_oil', 0.5], ['stew_beef', 1], ['onions', 0.3], ['crayfish', 0.2], ['stock_cubes', 0.2], ['eggs', 0.3, 'boiled, optional']],
+    steps: ['Blend green peppers and scotch bonnet coarsely; boil down until dry-ish.', 'Bleach the palm oil (well-ventilated kitchen!), then fry onions in it.', 'Fry the pepper blend 15 min; add meats and crayfish; simmer until the oil rises.'] },
+
+  banga_soup: { name: 'Banga Soup', emoji: '🍲', grad: ['#9a4a14', '#521f04'], cuisine: 'ng', type: 'main',
+    meals: ['l', 'd'], kid: 1, spice: 2, mins: 50, kcal: 440, protein: 30, health: 3, allergens: ['fish'],
+    desc: 'Delta classic — palm nut soup with fish and beef, deep and aromatic.',
+    ing: [['banga', 1], ['tilapia', 0.5], ['stew_beef', 0.7], ['dried_fish', 0.3], ['crayfish', 0.2], ['scotch_b', 0.5], ['stock_cubes', 0.2]],
+    steps: ['Dissolve the palm nut concentrate in hot water; simmer 10 min.', 'Add boiled beef, fish, crayfish and pepper.', 'Simmer until it thickens and the oil surfaces. Best with starch or eba.'] },
+
+  /* ---------- world & British complete dishes ---------- */
+  lasagne: { name: 'Family Lasagne', emoji: '🍝', grad: ['#a13a20', '#571508'], cuisine: 'world', type: 'dish',
+    meals: ['d'], kid: 3, spice: 0, mins: 80, kcal: 640, protein: 34, health: 3, allergens: ['gluten', 'milk'],
+    desc: 'Layers of rich ragù, white sauce and pasta — the tray that silences a table.',
+    ing: [['mince', 1], ['lasagne_sh', 0.5], ['plum_tom', 2], ['onions', 0.3], ['garlic', 0.5], ['milk', 0.3], ['flour', 0.1], ['butter', 0.3], ['cheese', 0.5]],
+    steps: ['Make the ragù: brown mince, add tomatoes, simmer 20 min.', 'Make a white sauce with butter, flour and milk.', 'Layer ragù, sheets and sauce; top with cheese.', 'Bake 35 min at 190°C until golden and bubbling.'] },
+
+  carbonara: { name: 'Spaghetti Carbonara', emoji: '🥓', grad: ['#b08a3e', '#63430e'], cuisine: 'world', type: 'dish',
+    meals: ['d'], kid: 2, spice: 0, mins: 20, kcal: 610, protein: 28, health: 2, allergens: ['gluten', 'egg', 'milk'],
+    desc: '20-minute silk: bacon, eggs and cheese emulsified into glossy pasta.',
+    ing: [['spaghetti', 1], ['bacon', 1], ['eggs', 0.3, '3 eggs + 1 yolk'], ['cheese', 0.3], ['garlic', 0.3]],
+    steps: ['Fry the bacon crisp; cook the spaghetti.', 'Whisk eggs with cheese and black pepper.', 'Off the heat, toss pasta with bacon, then the egg mix + a splash of pasta water — keep it moving until silky.'] },
+
+  pizza_night: { name: 'Homemade Pizza Night', emoji: '🍕', grad: ['#c24a24', '#6b1d08'], cuisine: 'world', type: 'dish',
+    meals: ['d'], kid: 3, spice: 0, mins: 30, kcal: 580, protein: 24, health: 2, allergens: ['gluten', 'milk'],
+    desc: 'Everyone tops their own — the Friday night the kids ask for by name.',
+    ing: [['pizza_base', 1], ['plum_tom', 1], ['puree', 0.3], ['cheese', 0.6], ['peppers', 0.3], ['mushrooms', 0.5]],
+    steps: ['Simmer tomatoes and purée into a quick sauce.', 'Sauce the bases; let everyone build their own.', 'Bake 10–12 min at 220°C until the cheese blisters.'] },
+
+  burgers: { name: 'Homemade Burgers', emoji: '🍔', grad: ['#8a5a2b', '#4c2e0c'], cuisine: 'uk', type: 'dish',
+    meals: ['d'], kid: 3, spice: 0, mins: 30, kcal: 620, protein: 32, health: 2, allergens: ['gluten', 'milk'],
+    desc: 'Smashed patties, melted cheese, soft buns — better than the drive-thru.',
+    ing: [['mince', 1], ['burger_buns', 1], ['cheese', 0.3], ['lettuce', 0.5], ['tomatoes', 0.5], ['onions', 0.2]],
+    steps: ['Season mince, shape loose balls.', 'Smash into a hot pan; 2–3 min a side, cheese on at the flip.', 'Toast the buns; stack with lettuce, tomato and onion.'] },
+
+  fish_pie: { name: 'Fish Pie', emoji: '🐟', grad: ['#2d6fa3', '#123c61'], cuisine: 'uk', type: 'dish',
+    meals: ['d'], kid: 2, spice: 0, mins: 70, kcal: 560, protein: 34, health: 4, allergens: ['fish', 'milk'],
+    desc: 'Flaky fish in creamy sauce under buttery mash — cold-evening armour.',
+    ing: [['white_fish', 1], ['potatoes', 0.6], ['milk', 0.4], ['butter', 0.4], ['flour', 0.1], ['peas', 0.3], ['cheese', 0.2]],
+    steps: ['Poach the fish in the milk; keep the milk.', 'Make a sauce from butter, flour and the poaching milk; fold in fish and peas.', 'Top with mash and cheese; bake 30 min at 200°C.'] },
+
+  katsu: { name: 'Chicken Katsu Curry', emoji: '🍱', grad: ['#c9942a', '#7c560a'], cuisine: 'world', type: 'dish',
+    meals: ['d'], kid: 3, spice: 0, mins: 40, kcal: 680, protein: 38, health: 3, allergens: ['gluten', 'egg'],
+    desc: 'Crispy breaded chicken over rice with that sweet, gentle katsu sauce.',
+    ing: [['chick_brst', 1], ['flour', 0.15], ['eggs', 0.2], ['bread', 0.3, 'crumbed'], ['curry_paste', 0.5], ['coconut_mlk', 0.5], ['rice', 0.4], ['veg_oil', 0.2]],
+    steps: ['Flatten the chicken; coat in flour, egg, breadcrumbs.', 'Shallow-fry until deeply golden; rest, then slice.', 'Simmer curry paste with coconut milk into a smooth sauce.', 'Slice over rice, pour the sauce.'] },
+
+  /* ---------- more proteins & sides ---------- */
+  peppered_gizzard: { name: 'Peppered Gizzard', emoji: '🍗', grad: ['#8c2f1b', '#4a1006'], cuisine: 'ng', type: 'protein',
+    kid: 1, spice: 2, mins: 40, kcal: 240, protein: 26, health: 4, allergens: [],
+    desc: 'Party staple — tender gizzards tossed in fiery pepper sauce.',
+    ing: [['gizzard', 1], ['peppers', 0.3], ['scotch_b', 0.3], ['onions', 0.2], ['veg_oil', 0.1]],
+    steps: ['Boil seasoned gizzards until tender; fry until golden.', 'Toss through a quick fried pepper-onion sauce.'] },
+
+  amala_side: { name: 'Amala', emoji: '🟤', grad: ['#5a3a1e', '#2e1b08'], cuisine: 'ng', type: 'side',
+    kid: 2, spice: 0, mins: 12, kcal: 300, protein: 3, health: 3, allergens: [],
+    desc: 'Smooth, dark yam-flour swallow — ogbono and ewedu’s best friend.',
+    ing: [['elubo', 0.3]],
+    steps: ['Whisk yam flour into boiling water; turn until smooth, dark and stretchy.'] },
+
+  noodles_side: { name: 'Egg Noodles', emoji: '🍜', grad: ['#c9a227', '#7c5f0b'], cuisine: 'world', type: 'side',
+    kid: 3, spice: 0, mins: 8, kcal: 280, protein: 9, health: 3, allergens: ['gluten', 'egg'],
+    desc: 'Springy noodles with a splash of soy.',
+    ing: [['noodles', 1], ['soy_sauce', 0.3]],
+    steps: ['Boil 4 min, drain, toss with soy sauce.'] },
+
+  salad_side: { name: 'Crunchy Salad', emoji: '🥗', grad: ['#3f8a3f', '#1c4f1c'], cuisine: 'world', type: 'side',
+    kid: 2, spice: 0, mins: 8, kcal: 60, protein: 2, health: 5, allergens: [],
+    desc: 'Lettuce, cucumber and tomato — the freshness on the side.',
+    ing: [['lettuce', 1], ['cucumber', 1], ['tomatoes', 0.5]],
+    steps: ['Chop everything, dress with a little oil and salt.'] },
+
+  coleslaw_side: { name: 'Coleslaw', emoji: '🥕', grad: ['#c98f2e', '#8a570c'], cuisine: 'uk', type: 'side',
+    kid: 2, spice: 0, mins: 2, kcal: 150, protein: 2, health: 3, allergens: ['egg', 'milk'],
+    desc: 'Creamy slaw — jollof and suya’s cooling partner.',
+    ing: [['coleslaw', 1]],
+    steps: ['Spoon it out. Done.'] },
+
+  couscous_side: { name: 'Fluffy Couscous', emoji: '🌾', grad: ['#b08a3e', '#63430e'], cuisine: 'world', type: 'side',
+    kid: 2, spice: 0, mins: 8, kcal: 220, protein: 7, health: 4, allergens: ['gluten'],
+    desc: 'Five-minute grains that soak up any stew.',
+    ing: [['couscous', 0.4], ['stock_cubes', 0.1]],
+    steps: ['Pour over hot stock, cover 5 min, fluff with a fork.'] },
+
+  naan_side: { name: 'Warm Naan', emoji: '🫓', grad: ['#c9942a', '#7c560a'], cuisine: 'world', type: 'side',
+    kid: 3, spice: 0, mins: 5, kcal: 260, protein: 7, health: 2, allergens: ['gluten', 'milk'],
+    desc: 'Pillowy naan for scooping up curry.',
+    ing: [['naan', 1]],
+    steps: ['Warm in the oven or a dry pan; brush with butter.'] },
+
+  garlic_bread_side: { name: 'Garlic Bread', emoji: '🥖', grad: ['#a5762e', '#63430e'], cuisine: 'uk', type: 'side',
+    kid: 3, spice: 0, mins: 12, kcal: 280, protein: 6, health: 2, allergens: ['gluten', 'milk'],
+    desc: 'Crispy, buttery, gone in seconds.',
+    ing: [['garlic_brd', 1]],
+    steps: ['Bake from frozen ~10–12 min at 200°C.'] },
 };
 
 /* ---- recommended pairings: main → sides that make sense, best first ---- */
@@ -399,16 +559,27 @@ const PAIRS = {
   akara:         ['bread_side'],
   fish_fingers_m:['chips_side', 'mash', 'dodo'],
   sausages_m:    ['mash', 'chips_side'],
+  stir_fry:      ['noodles_side', 'white_rice'],
+  curry_night:   ['white_rice', 'naan_side', 'couscous_side'],
+  fajitas:       ['salad_side', 'coleslaw_side'],
+  chilli_con:    ['white_rice', 'garlic_bread_side', 'couscous_side'],
+  ogbono_soup:   ['amala_side', 'pounded_yam', 'eba'],
+  edikaikong:    ['pounded_yam', 'eba', 'white_rice'],
+  ayamase:       ['white_rice', 'boiled_yam'],
+  banga_soup:    ['eba', 'white_rice', 'pounded_yam'],
 };
 
 /* ---- proteins that make sense with each main (best first).
    The planner picks by your preferences; swap freely on the meal card. ---- */
 const PROTEIN_PAIRS = {
-  jollof_rice:   ['grilled_chicken', 'fried_fish', 'peppered_turkey', 'fried_beef', 'boiled_eggs'],
-  fried_rice_ng: ['grilled_chicken', 'fried_fish', 'peppered_turkey', 'fried_beef'],
+  jollof_rice:   ['grilled_chicken', 'fried_fish', 'peppered_turkey', 'fried_beef', 'boiled_eggs', 'peppered_gizzard'],
+  fried_rice_ng: ['grilled_chicken', 'fried_fish', 'peppered_turkey', 'fried_beef', 'peppered_gizzard'],
   red_stew:      ['fried_fish', 'grilled_chicken', 'peppered_turkey', 'fried_beef', 'boiled_eggs'],
   ewa_beans:     ['fried_fish', 'boiled_eggs', 'grilled_chicken'],
   asaro:         ['grilled_chicken', 'fried_fish'],
+  stir_fry:      ['grilled_chicken', 'fried_beef', 'fried_fish', 'boiled_eggs'],
+  curry_night:   ['grilled_chicken', 'fried_fish', 'fried_beef'],
+  fajitas:       ['grilled_chicken', 'fried_beef'],
 };
 
 /* ---- batch cooking: one big pot of the MAIN covers N meals, keeps D days ---- */
@@ -428,13 +599,22 @@ const BATCH = {
   cottage:      { covers: 2, keeps: 3 },
   spagbol:      { covers: 2, keeps: 3 },
   pastabake:    { covers: 2, keeps: 2 },
+  ogbono_soup:  { covers: 3, keeps: 5 },
+  edikaikong:   { covers: 3, keeps: 4 },
+  ayamase:      { covers: 3, keeps: 5 },
+  banga_soup:   { covers: 3, keeps: 4 },
+  chilli_con:   { covers: 2, keeps: 3 },
+  curry_night:  { covers: 2, keeps: 3 },
+  lasagne:      { covers: 2, keeps: 3 },
+  fish_pie:     { covers: 2, keeps: 3 },
 };
 
-/* ---- onboarding quiz: parts asked about INDEPENDENTLY, in groups ---- */
+/* ---- onboarding starter picks: balanced across cuisines, grouped by USE ---- */
 const ONBOARD_GROUPS = [
-  { title: 'Soups & swallows', ids: ['egusi_soup', 'efo_soup', 'okra_soup', 'pepper_soup', 'pounded_yam', 'eba'] },
-  { title: 'Naija classics', ids: ['jollof_rice', 'fried_rice_ng', 'red_stew', 'ewa_beans', 'dodo', 'suya', 'moimoi', 'akara', 'asaro'] },
-  { title: 'British & fusion', ids: ['cottage', 'roast', 'spagbol', 'fishchips', 'pastabake', 'jackets', 'naija_bol', 'curry_stew', 'plantaintacos'] },
+  { title: 'Breakfasts', ids: ['porridge', 'weetabix', 'eggybread', 'fullenglish', 'plantainpancakes', 'akara', 'egg_sauce', 'moimoi'] },
+  { title: 'Quick & family dinners', ids: ['spagbol', 'pastabake', 'fishchips', 'jackets', 'fish_fingers_m', 'burgers', 'pizza_night', 'carbonara', 'tunapasta', 'fajitas', 'stir_fry'] },
+  { title: 'Comfort & batch cooking', ids: ['cottage', 'roast', 'toad', 'lasagne', 'fish_pie', 'chilli_con', 'curry_night', 'katsu', 'curry_stew', 'naija_bol'] },
+  { title: 'Nigerian favourites', ids: ['jollof_rice', 'egusi_soup', 'efo_soup', 'red_stew', 'ogbono_soup', 'ewa_beans', 'asaro', 'suya', 'pounded_yam', 'eba', 'amala_side', 'dodo'] },
 ];
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
